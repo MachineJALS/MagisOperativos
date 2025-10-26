@@ -1,0 +1,15 @@
+{
+  "name": "magis-operativos",
+  "version": "1.0.0",
+  "description": "Sistema multimedia distribuido para reproducir, convertir y compartir archivos",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run media-node\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "media-node": "cd nodes/media-node && npm start",
+    "client": "cd client && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../nodes/media-node && npm install && cd ../../client && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}
