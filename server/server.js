@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const dotenv = require('dotenv');
 const session = require('express-session');
 const passport = require('./config/passport');
+const fileRoutes = require('./routes/files');
 
 // Configurar variables de entorno
 dotenv.config();
@@ -53,6 +54,9 @@ app.get('/', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// Rutas de archivos
+app.use('/api/files', fileRoutes);
 
 // Health check mejorado
 app.get('/health', (req, res) => {
