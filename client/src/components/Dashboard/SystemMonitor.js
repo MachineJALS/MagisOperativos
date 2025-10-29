@@ -24,22 +24,47 @@ const SystemMonitor = () => {
     }
   };
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'blue' }) => (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center">
-          <div className={`p-3 rounded-lg bg-${color}-100`}>
-            <Icon className={`h-6 w-6 text-${color}-600`} />
+  // Mapeo estático de colores para Tailwind
+  const colorClasses = {
+    green: {
+      bg: 'bg-green-100',
+      text: 'text-green-600'
+    },
+    blue: {
+      bg: 'bg-blue-100',
+      text: 'text-blue-600'
+    },
+    purple: {
+      bg: 'bg-purple-100', 
+      text: 'text-purple-600'
+    },
+    orange: {
+      bg: 'bg-orange-100',
+      text: 'text-orange-600'
+    }
+  };
+
+  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'blue' }) => {
+    const colors = colorClasses[color] || colorClasses.blue;
+    
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center">
+            <div className={`p-3 rounded-lg ${colors.bg}`}>
+              <Icon className={`h-6 w-6 ${colors.text}`} />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">{title}</p>
+              <p className="text-2xl font-bold text-gray-900">{value}</p>
+              {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+            </div>
           </div>
-          <div className="ml-4">
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
+
 
   if (loading) {
     return (

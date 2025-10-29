@@ -10,14 +10,15 @@ router.get('/google',
 
 // Callback de Google
 router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    (req, res) => {
-        // Autenticación exitosa - generar token JWT
-        const token = generateToken(req.user);
-        
-        // Redirigir al frontend con el token
-        res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard?token=${token}`);
-    }
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    const token = generateToken(req.user);
+    
+    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3001';
+    console.log('🔀 Redirigiendo a:', `${frontendUrl}/dashboard?token=${token.substring(0, 20)}...`);
+    
+    res.redirect(`${frontendUrl}/dashboard?token=${token}`);
+  }
 );
 
 // Verificar token (para el frontend)
