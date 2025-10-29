@@ -34,7 +34,6 @@ class StorageManager {
         }
     }
 
-    // 🔥 AÑADE ESTE MÉTODO QUE FALTABA:
     async testConnection() {
         if (this.storageType !== 's3') {
             return { 
