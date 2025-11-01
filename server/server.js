@@ -5,6 +5,16 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 const passport = require('./config/passport');
 const fileRoutes = require('./routes/files');
+const path = require('path');
+
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+// Verificar que las variables se cargaron
+console.log('🔍 VARIABLES CARGADAS EN SERVER:');
+console.log('CLIENT_URL:', process.env.CLIENT_URL || '❌ NO CONFIGURADO');
+console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✅' : '❌');
+console.log('PORT:', process.env.PORT);
+
 
 // Configurar variables de entorno
 dotenv.config();

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Auth/Login';
+import TokenHandler from './components/Auth/TokenHandler';
 import Dashboard from './components/Dashboard/Dashboard';
 import { useAuth } from './hooks/useAuth';
 import './index.css';
@@ -23,18 +24,28 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
+          {/* Ruta para manejar el token de Google OAuth */}
+          <Route 
+            path="/dashboard" 
+            element={
+              !user ? <TokenHandler onLogin={login} /> : <Dashboard user={user} onLogout={logout} />
+            } 
+          />
+          
           <Route 
             path="/login" 
             element={
               !user ? <Login onLogin={login} /> : <Navigate to="/dashboard" />
             } 
           />
+          
           <Route 
             path="/dashboard/*" 
             element={
               user ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/login" />
             } 
           />
+          
           <Route 
             path="/" 
             element={<Navigate to={user ? "/dashboard" : "/login"} />} 

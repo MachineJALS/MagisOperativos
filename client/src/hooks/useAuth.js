@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -10,33 +9,37 @@ export const useAuth = () => {
   }, []);
 
   const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const response = await authAPI.verifyToken();
-        setUser(response.data.user);
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      try {
+        // Decodificar el token JWT
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        
+        // Verificar que el token no haya expirado
+        if (payload.exp * 1000 > Date.now()) {
+          setUser(payload);
+          console.log('✅ Usuario autenticado:', payload.email);
+        } else {
+          console.log('❌ Token expirado');
+          localStorage.removeItem('token');
+        }
+      } catch (error) {
+        console.error('❌ Token inválido:', error);
+        localStorage.removeItem('token');
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.removeItem('token');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   const login = (userData) => {
     setUser(userData);
   };
 
-  const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      localStorage.removeItem('token');
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('token');
   };
 
   return { user, loading, login, logout };

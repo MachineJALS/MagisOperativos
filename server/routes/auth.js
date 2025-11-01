@@ -8,16 +8,31 @@ router.get('/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Callback de Google
+// Callback de Google - VERSIÓN CORREGIDA
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
-    const token = generateToken(req.user);
-    
-    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3001';
-    console.log('🔀 Redirigiendo a:', `${frontendUrl}/dashboard?token=${token.substring(0, 20)}...`);
-    
-    res.redirect(`${frontendUrl}/dashboard?token=${token}`);
+    try {
+      // Generar token JWT
+      const token = generateToken(req.user);
+      
+      // Usar CLIENT_URL explícitamente
+      const frontendUrl = process.env.CLIENT_URL;
+      
+      if (!frontendUrl) {
+        console.error('❌ CLIENT_URL no configurado');
+        return res.status(500).send('Error de configuración del servidor');
+      }
+      
+      console.log('🔀 Redirigiendo a:', `${frontendUrl}/dashboard?token=XXX...`);
+      
+      // Redirigir al FRONTEND (React)
+      res.redirect(`${frontendUrl}/dashboard?token=${token}`);
+      
+    } catch (error) {
+      console.error('❌ Error en callback de Google:', error);
+      res.status(500).send('Error interno del servidor');
+    }
   }
 );
 

@@ -5,6 +5,7 @@ const Login = ({ onLogin }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Verificar si hay token en la URL (después del redirect de Google)
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     
@@ -12,11 +13,13 @@ const Login = ({ onLogin }) => {
       console.log('✅ Token recibido en Login:', token.substring(0, 20) + '...');
       localStorage.setItem('token', token);
       
+      // Decodificar el token para obtener información básica del usuario
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         console.log('✅ Usuario decodificado:', payload);
         onLogin(payload);
         
+        // Redirigir al dashboard SIN el token en la URL
         navigate('/dashboard', { replace: true });
         
       } catch (error) {
@@ -25,7 +28,6 @@ const Login = ({ onLogin }) => {
       }
     }
   }, [onLogin, navigate]);
-
 
   const handleGoogleLogin = () => {
     window.location.href = 'http://localhost:3000/auth/google';
