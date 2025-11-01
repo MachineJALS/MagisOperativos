@@ -35,5 +35,8 @@ router.post('/upload', upload.single('file'), fileController.uploadFile);
 router.get('/my-files', fileController.getUserFiles);
 router.get('/info/:fileId', fileController.getFileInfo);
 router.get('/test-storage', fileController.testStorage);
+router.get('/all', fileController.getAllFiles);
+router.get('/:fileId/download-to-local', fileController.downloadToLocal);
+router.post('/:fileId/upload-to-cloud', fileController.uploadToCloud);
 
 module.exports = router;

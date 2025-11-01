@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import Header from '../Layout/Header';
 import Sidebar from '../Layout/Sidebar';
 import FileUpload from './FileUpload';
-import FileList from './FileList';
 import SystemMonitor from './SystemMonitor';
+import './EnhancedFileList';
 
 const Dashboard = ({ user, onLogout }) => {
   const [activeView, setActiveView] = useState('files');
@@ -16,7 +16,7 @@ const Dashboard = ({ user, onLogout }) => {
         return <SystemMonitor />;
       case 'files':
       default:
-        return <FileList />;
+        return <EnhancedFileList />;
     }
   };
 

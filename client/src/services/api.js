@@ -1,4 +1,6 @@
 import axios from 'axios';
+import e from 'express';
+import { getAllUserFiles } from '../../../server/controllers/fileController';
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -40,6 +42,13 @@ export const filesAPI = {
   }),
   getMyFiles: (type = '') => api.get(`/api/files/my-files${type ? `?type=${type}` : ''}`),
   getFileInfo: (fileId) => api.get(`/api/files/info/${fileId}`),
+  testStorage: () => api.get('/api/files/test-storage'),
+
+  getAllUserFiles: (filters = {}) => api.get('/api/files/all', { params: filters }),
+  downloadToLocal: (fileId) => api.post(`/api/files/${fileId}/download-to-local`),
+  uploadToCloud: (fileId) => api.post(`/api/files/${fileId}/upload-to-cloud`),
+  downloadFile: (fileId) => api.get(`/api/files/download/${fileId}`),
+  getFileInfo: (fileId) => api.get(`/api/files/info/${fileId}`),
   testStorage: () => api.get('/api/files/test-storage')
 };
 
@@ -48,5 +57,6 @@ export const systemAPI = {
   getNodes: () => api.get('/api/nodes'),
   getStats: () => api.get('/api/stats')
 };
+
 
 export default api;
