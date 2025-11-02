@@ -3,6 +3,7 @@ const express = require('express');
 const multer = require('multer');
 const { authenticateJWT } = require('../middleware/auth');
 const fileController = require('../controllers/fileController');
+const S3Sync = require('../scripts/syncS3Files');
 
 const router = express.Router();
 
@@ -25,6 +26,34 @@ const upload = multer({
             cb(new Error('Tipo de archivo no permitido'), false);
         }
     }
+});
+
+
+// Sincronización con S3 al iniciar el servidor
+router.post('/sync-s3', authenticateJWT, async (req, res) => {
+  try {
+    const sync = new S3Sync();
+    
+    // Sincronizar carpetas específicas
+    const moviesCount = await sync.syncFolder('movies/', req.user.id);
+    const musicCount = await sync.syncFolder('music/', req.user.id);
+    
+    res.json({
+      success: true,
+      message: 'Sincronización completada',
+      results: {
+        movies: moviesCount,
+        music: musicCount,
+        total: moviesCount + musicCount
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Error en sincronización',
+      details: error.message
+    });
+  }
 });
 
 // Aplicar autenticación a todas las rutas
