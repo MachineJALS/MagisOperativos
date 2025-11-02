@@ -1,30 +1,37 @@
+// server/config/firebase.js - VERSIÓN CORREGIDA
 const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
 
 console.log('🔧 Configurando Firebase...');
 
-// Opción 1: Usar archivo JSON (RECOMENDADO)
-const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
+// Verificar si Firebase ya está inicializado
+if (!admin.apps.length) {
+  const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
 
-if (fs.existsSync(serviceAccountPath)) {
-  console.log('✅ Usando archivo JSON de servicio:', serviceAccountPath);
-  try {
-    const serviceAccount = require(serviceAccountPath);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
-    });
-    console.log('✅ Firebase inicializado desde archivo JSON');
-  } catch (error) {
-    console.error('❌ Error inicializando Firebase con archivo JSON:', error.message);
-    console.error('Detalles:', error);
+  if (fs.existsSync(serviceAccountPath)) {
+    console.log('✅ Usando archivo JSON de servicio:', serviceAccountPath);
+    try {
+      const serviceAccount = require(serviceAccountPath);
+      
+      // ✅ INICIALIZAR UNA SOLA VEZ con todas las configuraciones
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`,
+        ignoreUndefinedProperties: true // ✅ CONFIGURACIÓN IMPORTANTE
+      });
+      
+      console.log('✅ Firebase inicializado correctamente con ignoreUndefinedProperties');
+    } catch (error) {
+      console.error('❌ Error inicializando Firebase:', error.message);
+      process.exit(1);
+    }
+  } else {
+    console.log('❌ Archivo JSON no encontrado en:', serviceAccountPath);
     process.exit(1);
   }
 } else {
-  console.log('❌ Archivo JSON no encontrado en:', serviceAccountPath);
-  console.log('💡 Asegúrate de que firebase-service-account.json esté en la raíz del proyecto');
-  process.exit(1);
+  console.log('✅ Firebase ya estaba inicializado');
 }
 
 const db = admin.firestore();

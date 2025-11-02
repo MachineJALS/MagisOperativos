@@ -1,0 +1,226 @@
+/* client/src/components/Media/MediaPlayer.css */
+.media-player-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.media-player-container {
+  background-color: white;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 64rem;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.media-player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.media-player-title h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-player-title p {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.media-player-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.media-player-button {
+  padding: 0.5rem;
+  color: #4b5563;
+  transition: color 0.2s;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.media-player-button:hover {
+  color: #1f2937;
+}
+
+.icon {
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.media-player-content {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.audio-player {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.audio-icon {
+  width: 8rem;
+  height: 8rem;
+  background-color: #dbeafe;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+
+.music-icon {
+  height: 3rem;
+  width: 3rem;
+  color: #2563eb;
+}
+
+.audio-element {
+  width: 100%;
+}
+
+.video-element {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.media-player-controls {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.time {
+  font-size: 0.875rem;
+  color: #4b5563;
+  width: 3rem;
+}
+
+.current-time {
+  text-align: right;
+}
+
+.duration {
+  text-align: left;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 0.5rem;
+  background-color: #d1d5db;
+  border-radius: 0.5rem;
+  appearance: none;
+  cursor: pointer;
+}
+
+.progress-bar::-webkit-slider-thumb {
+  appearance: none;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background-color: #2563eb;
+}
+
+.controls-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.play-button {
+  padding: 0.75rem;
+  background-color: #2563eb;
+  color: white;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-button:hover {
+  background-color: #1d4ed8;
+}
+
+.play-button .icon {
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.volume-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.volume-button {
+  padding: 0.5rem;
+  color: #4b5563;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.volume-button:hover {
+  color: #1f2937;
+}
+
+.volume-bar {
+  width: 5rem;
+  height: 0.25rem;
+  background-color: #d1d5db;
+  border-radius: 0.5rem;
+  appearance: none;
+  cursor: pointer;
+}
+
+.volume-bar::-webkit-slider-thumb {
+  appearance: none;
+  height: 0.75rem;
+  width: 0.75rem;
+  border-radius: 9999px;
+  background-color: #4b5563;
+}
+
+.storage-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+}

@@ -1,3 +1,4 @@
+// server/middleware/auth.js - VERSIÓN MEJORADA
 const jwt = require('jsonwebtoken');
 
 // Middleware para verificar JWT
@@ -9,23 +10,47 @@ const authenticateJWT = (req, res, next) => {
         
         jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
             if (err) {
-                return res.status(403).json({ error: 'Token inválido' });
+                console.log('❌ Error verificando token:', err.message);
+                return res.status(403).json({ 
+                    success: false,
+                    error: 'Token inválido o expirado' 
+                });
             }
             
-            req.user = user;
+            // ✅ LOGS DETALLADOS PARA DEBUGGING
+            console.log('✅ Usuario autenticado:', {
+                id: user.userId || user.id,
+                email: user.email,
+                permissions: user.permissions
+            });
+            
+            // ✅ NORMALIZAR ESTRUCTURA DEL USUARIO
+            req.user = {
+                id: user.userId || user.id, // Compatibilidad con ambas formas
+                email: user.email,
+                permissions: user.permissions || ['user'] // Valor por defecto
+            };
+            
             next();
         });
     } else {
-        res.status(401).json({ error: 'Token de autenticación requerido' });
+        console.log('❌ No hay token de autorización en la solicitud');
+        res.status(401).json({ 
+            success: false,
+            error: 'Token de autenticación requerido' 
+        });
     }
 };
 
 // Middleware para verificar permisos de administrador
 const requireAdmin = (req, res, next) => {
-    if (req.user && req.user.permissions.includes('admin')) {
+    if (req.user && req.user.permissions && req.user.permissions.includes('admin')) {
         next();
     } else {
-        res.status(403).json({ error: 'Se requieren permisos de administrador' });
+        res.status(403).json({ 
+            success: false,
+            error: 'Se requieren permisos de administrador' 
+        });
     }
 };
 
@@ -33,9 +58,10 @@ const requireAdmin = (req, res, next) => {
 const generateToken = (user) => {
     return jwt.sign(
         { 
-            userId: user.id, 
+            id: user.id, // ✅ USAR 'id' CONSISTENTEMENTE
+            userId: user.id, // ✅ MANTENER COMPATIBILIDAD
             email: user.email,
-            permissions: user.permissions 
+            permissions: user.permissions || ['user']
         },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }

@@ -128,6 +128,29 @@ class StorageManager {
         };
     }
 
+    async getFile(filePath) {
+        if (this.storageType === 's3') {
+            const params = {
+                Bucket: this.bucket,
+                Key: filePath
+            };
+            return await this.s3.getObject(params).promise();
+        } else {
+            const fullPath = path.join(this.localStoragePath, filePath);
+            const fileBuffer = fs.readFileSync(fullPath);
+            return { Body: fileBuffer };
+        }
+    }
+
+    async saveToLocal(fileBuffer, originalName, folder = 'media') {
+        const fileExtension = path.extname(originalName);
+        const fileName = path.basename(originalName, fileExtension);
+        const uniqueFileName = `${fileName}_${uuidv4()}${fileExtension}`;
+        const filePath = '${folder}/${uniqueFileName}';
+
+        return await this.uploadToLocal(fileBuffer, filePath);
+    }
+
     getContentType(filePath) {
         const ext = path.extname(filePath).toLowerCase();
         const contentTypes = {

@@ -3,7 +3,7 @@ import Header from '../Layout/Header';
 import Sidebar from '../Layout/Sidebar';
 import FileUpload from './FileUpload';
 import SystemMonitor from './SystemMonitor';
-import './EnhancedFileList';
+import FileList from './FileList';
 
 const Dashboard = ({ user, onLogout }) => {
   const [activeView, setActiveView] = useState('files');
@@ -16,7 +16,7 @@ const Dashboard = ({ user, onLogout }) => {
         return <SystemMonitor />;
       case 'files':
       default:
-        return <EnhancedFileList />;
+        return <FileList />;
     }
   };
 

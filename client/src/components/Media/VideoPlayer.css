@@ -1,0 +1,346 @@
+/* client/src/components/Media/VideoPlayer.css */
+.video-player-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0;
+}
+
+.video-player-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-player-container.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+}
+
+.video-controls-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.video-controls-header.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.video-controls-header.visible {
+  opacity: 1;
+}
+
+.video-player-info {
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.video-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 0.25rem 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.video-subtitle {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.video-player-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.video-action-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.video-action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.close-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.video-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.video-player-content {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+.center-controls {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  transition: opacity 0.3s ease;
+}
+
+.center-controls.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.center-controls.visible {
+  opacity: 1;
+}
+
+.big-play-btn {
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.big-play-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+}
+
+.big-play-icon {
+  width: 32px;
+  height: 32px;
+  color: white;
+  margin-left: 4px;
+}
+
+.video-player-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+  padding: 1.5rem;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.video-player-controls.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.video-player-controls.visible {
+  opacity: 1;
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.time-display {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  min-width: 40px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.current-time {
+  text-align: right;
+}
+
+.total-time {
+  text-align: left;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+}
+
+.progress-bar::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff4444;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 2px solid white;
+}
+
+.control-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.play-pause-btn {
+  background: rgba(255, 68, 68, 0.2);
+  border-color: rgba(255, 68, 68, 0.3);
+}
+
+.control-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.volume-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.volume-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.volume-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.volume-slider {
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.video-info {
+  display: flex;
+  align-items: center;
+}
+
+.storage-info {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .video-controls-header {
+    padding: 1rem;
+  }
+  
+  .video-title {
+    font-size: 1rem;
+  }
+  
+  .video-player-controls {
+    padding: 1rem;
+  }
+  
+  .control-buttons {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .playback-controls {
+    justify-content: center;
+  }
+  
+  .volume-controls {
+    justify-content: center;
+  }
+  
+  .video-info {
+    justify-content: center;
+  }
+}
