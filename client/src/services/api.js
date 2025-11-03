@@ -46,7 +46,11 @@ export const filesAPI = {
   downloadToLocal: (fileId) => api.post(`/api/files/${fileId}/download-to-local`),
   uploadToCloud: (fileId) => api.post(`/api/files/${fileId}/upload-to-cloud`),
   
-  // NUEVO MÉTODO: Sincronización S3
+  // NUEVOS MÉTODOS PARA URLs FIRMADAS
+  getSignedUrl: (fileId) => api.get(`/api/files/signed-url/${fileId}`),
+  getDownloadUrl: (fileId) => api.get(`/api/files/download-url/${fileId}`),
+  
+  // Sincronización S3
   syncS3: () => api.post('/api/files/sync-s3')
 };
 

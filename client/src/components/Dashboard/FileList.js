@@ -1,6 +1,6 @@
-// client/src/components/Dashboard/FileList.js - VERSIÓN ACTUALIZADA
+// client/src/components/Dashboard/FileList.js
 import React, { useState, useEffect } from 'react';
-import { File, Play, Download, Music, Video, Image, RefreshCw, CloudUpload, Cloud, HardDrive } from 'lucide-react';
+import { File, Play, Download, Music, Video, Image, RefreshCw, Cloud, HardDrive } from 'lucide-react';
 import { filesAPI } from '../../services/api';
 import { Card, CardContent, CardHeader } from '../UI/Card';
 import AudioPlayer from '../Media/AudioPlayer';
@@ -35,14 +35,11 @@ const FileList = () => {
     try {
       setSyncing(true);
       const response = await filesAPI.syncS3();
-      
-      // ✅ ACTUALIZACIÓN AUTOMÁTICA SIN RECARGAR
       await loadFiles();
       
-      // Mostrar resultado
       const totalSynced = response.data.results.movies.synced + response.data.results.music.synced;
       if (totalSynced > 0) {
-        alert(`✅ Sincronizados ${totalSynced} archivos\n• Películas: ${response.data.results.movies.synced}\n• Música: ${response.data.results.music.synced}`);
+        alert(`✅ Sincronizados ${totalSynced} archivos`);
       } else {
         alert('📁 Todos los archivos ya estaban sincronizados');
       }
@@ -56,14 +53,10 @@ const FileList = () => {
 
   const getFileIcon = (fileType) => {
     switch (fileType) {
-      case 'audio':
-        return <Music className="h-5 w-5 text-blue-500" />;
-      case 'video':
-        return <Video className="h-5 w-5 text-purple-500" />;
-      case 'image':
-        return <Image className="h-5 w-5 text-green-500" />;
-      default:
-        return <File className="h-5 w-5 text-gray-500" />;
+      case 'audio': return <Music className="h-5 w-5 text-blue-500" />;
+      case 'video': return <Video className="h-5 w-5 text-purple-500" />;
+      case 'image': return <Image className="h-5 w-5 text-green-500" />;
+      default: return <File className="h-5 w-5 text-gray-500" />;
     }
   };
 
@@ -85,9 +78,7 @@ const FileList = () => {
     return new Date(dateString).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
   };
 
@@ -97,41 +88,36 @@ const FileList = () => {
     } else if (file.fileType === 'video') {
       setCurrentVideo(file);
     } else {
-      alert(`📁 Archivo: ${file.originalName}\nEste tipo de archivo no se puede reproducir.`);
+      alert(`📁 ${file.originalName}\nEste tipo de archivo no se puede reproducir.`);
     }
   };
 
   const handleDownloadFile = async (file) => {
     try {
+      console.log('📥 Iniciando descarga de:', file.originalName);
+      
+      // Obtener URL firmada para descarga
+      const response = await filesAPI.getDownloadUrl(file.id);
+      const downloadUrl = response.data.downloadUrl;
+      
+      console.log('✅ URL de descarga obtenida');
+
       // Crear enlace de descarga temporal
       const link = document.createElement('a');
-      link.href = file.storageInfo?.url;
+      link.href = downloadUrl;
       link.download = file.originalName;
       link.target = '_blank';
+      
+      // Agregar al DOM y hacer clic
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      
+      console.log('✅ Descarga iniciada');
+      
     } catch (error) {
-      console.error('Error descargando archivo:', error);
-      alert('❌ Error al descargar el archivo');
-    }
-  };
-
-  const handleDownloadToLocal = async (file) => {
-    try {
-      alert('🔄 Funcionalidad "Descargar a Local" en desarrollo');
-      // await filesAPI.downloadToLocal(file.id);
-    } catch (error) {
-      console.error('Error descargando a local:', error);
-      alert('❌ Error descargando a almacenamiento local');
-    }
-  };
-
-  const handleUploadToCloud = async (file) => {
-    try {
-      alert('☁️ Funcionalidad "Subir a la Nube" en desarrollo');
-      // await filesAPI.uploadToCloud(file.id);
-    } catch (error) {
-      console.error('Error subiendo a la nube:', error);
-      alert('❌ Error subiendo a la nube');
+      console.error('❌ Error descargando archivo:', error);
+      alert('❌ Error al descargar el archivo. Verifica la consola para más detalles.');
     }
   };
 
@@ -142,6 +128,7 @@ const FileList = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mis Archivos</h1>
@@ -157,36 +144,12 @@ const FileList = () => {
         </button>
       </div>
 
+      {/* File List */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Archivos Multimedia {files.length > 0 && `(${files.length})`}
-            </h2>
-            <div className="flex space-x-2">
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">Todos los archivos</option>
-                <option value="audio">Audio</option>
-                <option value="video">Video</option>
-                <option value="image">Imágenes</option>
-              </select>
-              <button
-                onClick={loadFiles}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors"
-              >
-                Actualizar
-              </button>
-            </div>
-          </div>
-        </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-gray-600">Cargando archivos...</p>
             </div>
           ) : filteredFiles.length === 0 ? (
@@ -195,33 +158,30 @@ const FileList = () => {
               <h3 className="mt-2 text-sm font-medium text-gray-900">No hay archivos</h3>
               <p className="mt-1 text-sm text-gray-500">
                 {filter === 'all' 
-                  ? 'Comienza subiendo algunos archivos o sincronizando con S3.' 
+                  ? 'Comienza sincronizando con S3.' 
                   : `No hay archivos de tipo ${filter}.`}
               </p>
-              <button
-                onClick={syncS3Files}
-                className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
-              >
-                🔄 Sincronizar con S3
-              </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {filteredFiles.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-4">
+                <div key={file.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center space-x-3">
                     {getFileIcon(file.fileType)}
-                    <div>
-                      <h3 className="font-medium text-gray-900">{file.originalName}</h3>
-                      <p className="text-sm text-gray-500">
-                        {formatFileSize(file.size)} • {formatDate(file.metadata.uploadDate)}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">
+                        {file.originalName}
+                      </h3>
+                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        <span>{formatFileSize(file.size)}</span>
+                        <span>•</span>
+                        <span>{formatDate(file.metadata.uploadDate)}</span>
+                        <span>•</span>
                         {getStorageIcon(file.storageInfo?.storageType)}
-                        <span className="text-xs text-gray-400">
-                          {file.storageInfo?.storageType === 's3' ? 'AWS S3' : 'Almacenamiento Local'}
-                          {file.metadata?.syncedFromS3 && ' • Sincronizado'}
-                        </span>
+                        <span>{file.storageInfo?.storageType === 's3' ? 'S3' : 'Local'}</span>
+                        {file.storageInfo?.storageType === 's3' && (
+                          <span className="text-blue-500">🔐</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -229,46 +189,18 @@ const FileList = () => {
                     {(file.fileType === 'audio' || file.fileType === 'video') && (
                       <button 
                         onClick={() => handlePlayFile(file)}
-                        className="flex items-center space-x-1 p-2 text-gray-600 hover:text-green-600 transition-colors"
-                        title={`Reproducir ${file.fileType}`}
+                        className="p-2 text-green-600 hover:text-green-700 transition-colors"
+                        title="Reproducir"
                       >
                         <Play className="h-4 w-4" />
-                        <span className="text-xs hidden sm:inline">Reproducir</span>
                       </button>
                     )}
-                    
-                    {/* Botón para archivos en S3 */}
-                    {file.storageInfo?.storageType === 's3' && (
-                      <button 
-                        onClick={() => handleDownloadToLocal(file)}
-                        className="flex items-center space-x-1 p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                        title="Descargar a almacenamiento local"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span className="text-xs hidden sm:inline">Descargar</span>
-                      </button>
-                    )}
-                    
-                    {/* Botón para archivos locales */}
-                    {file.storageInfo?.storageType === 'local' && (
-                      <button 
-                        onClick={() => handleUploadToCloud(file)}
-                        className="flex items-center space-x-1 p-2 text-gray-600 hover:text-orange-600 transition-colors"
-                        title="Subir a la nube"
-                      >
-                        <CloudUpload className="h-4 w-4" />
-                        <span className="text-xs hidden sm:inline">Subir</span>
-                      </button>
-                    )}
-                    
-                    {/* Botón de descarga directa */}
                     <button 
                       onClick={() => handleDownloadFile(file)}
-                      className="flex items-center space-x-1 p-2 text-gray-600 hover:text-purple-600 transition-colors"
-                      title="Descargar archivo"
+                      className="p-2 text-blue-600 hover:text-blue-700 transition-colors"
+                      title="Descargar"
                     >
                       <Download className="h-4 w-4" />
-                      <span className="text-xs hidden sm:inline">Descargar</span>
                     </button>
                   </div>
                 </div>
@@ -285,7 +217,6 @@ const FileList = () => {
           onClose={() => setCurrentAudio(null)} 
         />
       )}
-      
       {currentVideo && (
         <VideoPlayer 
           file={currentVideo} 
