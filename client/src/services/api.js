@@ -1,4 +1,4 @@
-// client/src/services/api.js
+// client/src/services/api.js - VERSIÓN ACTUALIZADA
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000';
@@ -25,6 +25,24 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+
+export const mediaAPI = {
+  // Conversión de archivos
+  convertFile: (fileId, targetFormat, quality, uploadToCloud = false) => 
+    api.post(`/api/media/convert/${fileId}`, { 
+      targetFormat, 
+      quality,
+      uploadToCloud 
+    }),
+  
+  // Formatos soportados
+  getSupportedFormats: (fileType = '') => 
+    api.get(`/api/media/supported-formats${fileType ? `?fileType=${fileType}` : ''}`),
+  
+  // Información de archivo
+  getMediaInfo: (fileId) => api.get(`/api/media/info/${fileId}`)
+};
 
 export const authAPI = {
   loginWithGoogle: () => {
@@ -54,10 +72,16 @@ export const filesAPI = {
   syncS3: () => api.post('/api/files/sync-s3')
 };
 
+// En client/src/services/api.js - CORREGIR systemAPI:
 export const systemAPI = {
-  getHealth: () => api.get('/health'),
-  getNodes: () => api.get('/api/nodes'),
-  getStats: () => api.get('/api/stats')
+  // ✅ CORREGIDO: Usar la ruta correcta
+  getNodes: () => api.get('/api/nodes/stats'),
+  registerNode: (nodeData) => api.post('/api/nodes/register', nodeData),
+  updateNodeStats: (nodeId, stats) => api.post(`/api/nodes/${nodeId}/stats`, stats),
+  distributeTask: (taskData) => api.post('/api/nodes/distribute-task', taskData),
+  
+  // ✅ NUEVO: Para obtener estadísticas del sistema
+  getSystemStats: () => api.get('/api/nodes/stats')
 };
 
 export default api;

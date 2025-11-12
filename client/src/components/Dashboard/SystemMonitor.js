@@ -1,169 +1,226 @@
+// client/src/components/Dashboard/SystemMonitor.js - VERSIÓN ORIGINAL
 import React, { useState, useEffect } from 'react';
-import { Cpu, HardDrive, Network, Server } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, Network, Server, Play, RefreshCw } from 'lucide-react';
 import { systemAPI } from '../../services/api';
-import { Card, CardContent, CardHeader } from '../UI/Card';
 
 const SystemMonitor = () => {
-  const [systemInfo, setSystemInfo] = useState(null);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    loadSystemInfo();
-    const interval = setInterval(loadSystemInfo, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadSystemInfo = async () => {
+  const loadStats = async () => {
     try {
-      const response = await systemAPI.getHealth();
-      setSystemInfo(response.data);
+      const response = await systemAPI.getNodes();
+      setStats(response.data.stats);
     } catch (error) {
-      console.error('Error loading system info:', error);
+      console.error('Error cargando estadísticas:', error);
+      // Datos de ejemplo para desarrollo
+      setStats({
+        totalNodes: 2,
+        onlineNodes: 1,
+        totalTasks: 3,
+        queuedTasks: 1,
+        nodes: [
+          {
+            id: 'node-conversion-1',
+            type: 'conversion',
+            status: 'online',
+            address: '192.168.1.100:3002',
+            stats: {
+              cpu: 45,
+              memory: 62,
+              disk: 78,
+              network: 25,
+              activeTasks: 2,
+              maxTasks: 10
+            }
+          },
+          {
+            id: 'node-storage-1', 
+            type: 'storage',
+            status: 'offline',
+            address: '192.168.1.101:3003',
+            stats: {
+              cpu: 0,
+              memory: 0,
+              disk: 0,
+              network: 0,
+              activeTasks: 0,
+              maxTasks: 5
+            }
+          }
+        ]
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Mapeo estático de colores para Tailwind
-  const colorClasses = {
-    green: {
-      bg: 'bg-green-100',
-      text: 'text-green-600'
-    },
-    blue: {
-      bg: 'bg-blue-100',
-      text: 'text-blue-600'
-    },
-    purple: {
-      bg: 'bg-purple-100', 
-      text: 'text-purple-600'
-    },
-    orange: {
-      bg: 'bg-orange-100',
-      text: 'text-orange-600'
+  useEffect(() => {
+    loadStats();
+
+    if (autoRefresh) {
+      const interval = setInterval(loadStats, 5000);
+      return () => clearInterval(interval);
     }
+  }, [autoRefresh]);
+
+  const getStatusColor = (status) => {
+    return status === 'online' ? 'text-green-500' : 'text-red-500';
   };
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'blue' }) => {
-    const colors = colorClasses[color] || colorClasses.blue;
-    
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center">
-            <div className={`p-3 rounded-lg ${colors.bg}`}>
-              <Icon className={`h-6 w-6 ${colors.text}`} />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{title}</p>
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
-              {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const getUsageColor = (percentage) => {
+    if (percentage < 50) return 'text-green-500';
+    if (percentage < 80) return 'text-yellow-500';
+    return 'text-red-500';
   };
-
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Monitor del Sistema</h1>
-          <p className="text-gray-600">Estado del sistema distribuido</p>
-        </div>
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Cargando información del sistema...</p>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Monitor del Sistema</h1>
-        <p className="text-gray-600">Estado del sistema distribuido</p>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Monitor del Sistema</h2>
+          <p className="text-gray-600">Estado de nodos distribuidos</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={loadStats}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>Actualizar</span>
+          </button>
+          <label className="flex items-center space-x-2 text-sm">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="rounded text-blue-600"
+            />
+            <span>Auto-actualizar</span>
+          </label>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          icon={Server}
-          title="Estado del Servidor"
-          value="En Línea"
-          subtitle="Sistema operativo"
-          color="green"
-        />
-        <StatCard
-          icon={Cpu}
-          title="Uso de CPU"
-          value="45%"
-          subtitle="Carga actual"
-          color="blue"
-        />
-        <StatCard
-          icon={HardDrive}
-          title="Almacenamiento"
-          value="1.2 GB"
-          subtitle="de 10 GB usado"
-          color="purple"
-        />
-        <StatCard
-          icon={Network}
-          title="Nodos Activos"
-          value="2"
-          subtitle="Conectados"
-          color="orange"
-        />
+      {/* Estadísticas Generales */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <Server className="h-8 w-8 text-blue-500" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Nodos Totales</p>
+              <p className="text-2xl font-semibold">{stats?.totalNodes || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+              <Play className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">En Línea</p>
+              <p className="text-2xl font-semibold text-green-600">{stats?.onlineNodes || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <Cpu className="h-8 w-8 text-purple-500" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Tareas Activas</p>
+              <p className="text-2xl font-semibold">{stats?.totalTasks || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <HardDrive className="h-8 w-8 text-orange-500" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">En Cola</p>
+              <p className="text-2xl font-semibold">{stats?.queuedTasks || 0}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Información del Sistema</h2>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Servicio Principal</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Estado:</span>
-                    <span className="font-medium text-green-600">En Línea</span>
+      {/* Lista de Nodos */}
+      <div className="bg-white rounded-lg shadow border overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b">
+          <h3 className="text-lg font-medium text-gray-900">Nodos del Sistema</h3>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {stats?.nodes?.map((node) => (
+            <div key={node.id} className="px-4 py-4 sm:px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Server className={`h-5 w-5 ${getStatusColor(node.status)}`} />
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900">{node.id}</h4>
+                    <p className="text-sm text-gray-500">
+                      {node.type} • {node.address}
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tiempo activo:</span>
-                    <span className="font-medium">{systemInfo?.uptime || '0'} segundos</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Usuario:</span>
-                    <span className="font-medium">{systemInfo?.user || 'No autenticado'}</span>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">
+                      {node.stats.activeTasks}/{node.stats.maxTasks} tareas
+                    </p>
+                    <p className={`text-xs ${getStatusColor(node.status)}`}>
+                      {node.status === 'online' ? 'En línea' : 'Desconectado'}
+                    </p>
                   </div>
                 </div>
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Recursos</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Memoria:</span>
-                    <span className="font-medium">65% usada</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Archivos:</span>
-                    <span className="font-medium">24 subidos</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Sesiones:</span>
-                    <span className="font-medium">1 activa</span>
-                  </div>
+              
+              {/* Métricas del Nodo */}
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div className="flex items-center space-x-2">
+                  <Cpu className="h-4 w-4 text-gray-400" />
+                  <span>CPU:</span>
+                  <span className={getUsageColor(node.stats.cpu)}>
+                    {node.stats.cpu}%
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <MemoryStick className="h-4 w-4 text-gray-400" />
+                  <span>RAM:</span>
+                  <span className={getUsageColor(node.stats.memory)}>
+                    {node.stats.memory}%
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Network className="h-4 w-4 text-gray-400" />
+                  <span>Red:</span>
+                  <span className={getUsageColor(node.stats.network)}>
+                    {node.stats.network}%
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <HardDrive className="h-4 w-4 text-gray-400" />
+                  <span>Disco:</span>
+                  <span className={getUsageColor(node.stats.disk)}>
+                    {node.stats.disk}%
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

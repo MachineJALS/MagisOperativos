@@ -1,6 +1,6 @@
-// client/src/components/Media/VideoPlayer.js - VERSIÓN CORREGIDA
+// client/src/components/Media/VideoPlayer.js - VERSIÓN OPTIMIZADA
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, X, Download, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, X, Download, Maximize2, Minimize2, Loader } from 'lucide-react';
 import { filesAPI } from '../../services/api';
 
 const VideoPlayer = ({ file, onClose }) => {
@@ -14,6 +14,8 @@ const VideoPlayer = ({ file, onClose }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [buffering, setBuffering] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   
   const videoRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
@@ -22,16 +24,24 @@ const VideoPlayer = ({ file, onClose }) => {
     const loadSignedUrl = async () => {
       try {
         setLoading(true);
-        console.log('🎬 Cargando video:', file.id);
+        setBuffering(true);
+        console.log('🎬 Cargando video grande:', file.originalName, 'Tamaño:', Math.round(file.size / 1024 / 1024) + 'MB');
         
-        const response = await filesAPI.getSignedUrl(file.id);
+        // Añadir timeout para archivos grandes
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout cargando video')), 30000)
+        );
+        
+        const urlPromise = filesAPI.getSignedUrl(file.id);
+        
+        const response = await Promise.race([urlPromise, timeoutPromise]);
         const url = response.data.signedUrl;
-        console.log('✅ URL obtenida:', url);
+        console.log('✅ URL firmada obtenida para video grande');
         
         setSignedUrl(url);
       } catch (err) {
-        console.error('❌ Error:', err);
-        setError('No se pudo cargar el video: ' + err.message);
+        console.error('❌ Error cargando video grande:', err);
+        setError(`No se pudo cargar el video: ${err.message}. El archivo puede ser muy grande.`);
       } finally {
         setLoading(false);
       }
@@ -49,17 +59,19 @@ const VideoPlayer = ({ file, onClose }) => {
   }, [file]);
 
   // Controladores del video nativo
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play().catch(e => {
-          console.error('Error al reproducir:', e);
-          setError('Error al reproducir: ' + e.message);
-        });
+      try {
+        if (isPlaying) {
+          videoRef.current.pause();
+        } else {
+          await videoRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+      } catch (err) {
+        console.error('Error al reproducir:', err);
+        setError(`Error de reproducción: ${err.message}`);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -71,9 +83,11 @@ const VideoPlayer = ({ file, onClose }) => {
   };
 
   const toggleFullscreen = () => {
+    const element = videoRef.current.parentElement;
+
     if (!document.fullscreenElement) {
-      videoRef.current.requestFullscreen().catch(err => {
-        console.error('Error al entrar en pantalla completa:', err);
+      element.requestFullscreen().catch(err => {
+        console.error('Error fullscreen:', err);
       });
       setIsFullscreen(true);
     } else {
@@ -105,6 +119,13 @@ const VideoPlayer = ({ file, onClose }) => {
     }
   };
 
+  const handlePlaybackRateChange = (rate) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = rate;
+    }
+  };
+
   const handleMouseMove = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) {
@@ -117,6 +138,7 @@ const VideoPlayer = ({ file, onClose }) => {
 
   const handleDownload = async () => {
     try {
+      console.log('📥 Iniciando descarga de video grande...');
       const response = await filesAPI.getDownloadUrl(file.id);
       const link = document.createElement('a');
       link.href = response.data.downloadUrl;
@@ -126,8 +148,54 @@ const VideoPlayer = ({ file, onClose }) => {
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error descargando:', error);
-      alert('❌ Error al descargar');
+      alert('❌ Error al descargar el video');
     }
+  };
+
+  // Manejo de eventos del video
+  const handleLoadStart = () => {
+    console.log('🔄 Video empezando a cargar...');
+    setBuffering(true);
+  };
+
+  const handleCanPlay = () => {
+    console.log('✅ Video puede reproducirse');
+    setBuffering(false);
+  };
+
+  const handleWaiting = () => {
+    console.log('⏳ Video esperando datos...');
+    setBuffering(true);
+  };
+
+  const handlePlaying = () => {
+    console.log('▶️ Video reproduciéndose');
+    setBuffering(false);
+  };
+
+  const handleError = (e) => {
+    console.error('🚨 Error de video:', e);
+    const video = e.target;
+    let errorMsg = 'Error desconocido';
+    
+    if (video.error) {
+      switch (video.error.code) {
+        case video.error.MEDIA_ERR_ABORTED:
+          errorMsg = 'Reproducción cancelada';
+          break;
+        case video.error.MEDIA_ERR_NETWORK:
+          errorMsg = 'Error de red - el video es muy grande para streaming';
+          break;
+        case video.error.MEDIA_ERR_DECODE:
+          errorMsg = 'Error de decodificación - formato no compatible';
+          break;
+        case video.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMsg = 'Formato de video no soportado';
+          break;
+      }
+    }
+    
+    setError(`Error de video: ${errorMsg}`);
   };
 
   const formatTime = (seconds) => {
@@ -137,12 +205,28 @@ const VideoPlayer = ({ file, onClose }) => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  // Efecto para manejar eventos de fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <Loader className="h-12 w-12 text-white animate-spin mx-auto mb-4" />
           <p className="text-white text-lg">Cargando video...</p>
+          <p className="text-gray-400 text-sm mt-2">
+            {file.originalName} ({Math.round(file.size / 1024 / 1024)}MB)
+          </p>
+          <p className="text-gray-500 text-xs mt-1">Los videos grandes pueden tardar más en cargar</p>
         </div>
       </div>
     );
@@ -154,14 +238,28 @@ const VideoPlayer = ({ file, onClose }) => {
         <div className="bg-gray-800 rounded-lg p-6 max-w-md">
           <div className="text-center">
             <div className="text-red-500 text-4xl mb-4">❌</div>
-            <h3 className="text-lg font-semibold text-white mb-2">Error</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Error con Video Grande</h3>
             <p className="text-gray-300 mb-4">{error}</p>
-            <button
-              onClick={onClose}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Cerrar
-            </button>
+            <div className="text-xs text-gray-400 mb-4 p-3 bg-gray-900 rounded">
+              <p><strong>Archivo:</strong> {file.originalName}</p>
+              <p><strong>Tamaño:</strong> {Math.round(file.size / 1024 / 1024)} MB</p>
+              <p><strong>Tipo:</strong> {file.fileType}</p>
+              <p><strong>Formato:</strong> {file.mimeType}</p>
+            </div>
+            <div className="flex space-x-3 justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={onClose}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -183,13 +281,26 @@ const VideoPlayer = ({ file, onClose }) => {
           onClick={togglePlay}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleTimeUpdate}
+          onLoadStart={handleLoadStart}
+          onCanPlay={handleCanPlay}
+          onWaiting={handleWaiting}
+          onPlaying={handlePlaying}
           onEnded={() => setIsPlaying(false)}
-          onError={(e) => {
-            console.error('Error de video:', e);
-            setError('Error al cargar el archivo de video');
-          }}
-          preload="metadata"
+          onError={handleError}
+          preload="auto"
+          playsInline
+          webkit-playsinline="true"
         />
+
+        {/* Buffering Indicator */}
+        {buffering && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="text-center">
+              <Loader className="h-12 w-12 text-white animate-spin mx-auto mb-4" />
+              <p className="text-white">Cargando video...</p>
+            </div>
+          </div>
+        )}
 
         {/* Header Controls */}
         {showControls && (
@@ -197,7 +308,9 @@ const VideoPlayer = ({ file, onClose }) => {
             <div className="flex justify-between items-center">
               <div className="text-white flex-1 min-w-0">
                 <h3 className="text-lg font-semibold truncate">{file.originalName}</h3>
-                <p className="text-sm text-gray-300">🎬 Video • {file.fileType}</p>
+                <p className="text-sm text-gray-300">
+                  🎬 Video • {Math.round(file.size / 1024 / 1024)}MB • {formatTime(duration)}
+                </p>
               </div>
               <div className="flex space-x-2">
                 <button 
@@ -245,13 +358,32 @@ const VideoPlayer = ({ file, onClose }) => {
 
             {/* Control Buttons */}
             <div className="flex items-center justify-between">
-              <button
-                onClick={togglePlay}
-                className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors"
-              >
-                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-                <span>{isPlaying ? 'Pausar' : 'Reproducir'}</span>
-              </button>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={togglePlay}
+                  className="flex items-center space-x-2 text-white hover:text-gray-300 transition-colors"
+                >
+                  {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                  <span>{isPlaying ? 'Pausar' : 'Reproducir'}</span>
+                </button>
+
+                {/* Playback Speed */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-white text-sm">Velocidad:</span>
+                  <select 
+                    value={playbackRate}
+                    onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
+                    className="bg-gray-700 text-white text-sm rounded px-2 py-1"
+                  >
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1.0">Normal</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2.0">2.0x</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -277,7 +409,7 @@ const VideoPlayer = ({ file, onClose }) => {
         )}
 
         {/* Center Play Button (when paused) */}
-        {!isPlaying && (
+        {!isPlaying && !buffering && (
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               onClick={togglePlay}
@@ -288,10 +420,10 @@ const VideoPlayer = ({ file, onClose }) => {
           </div>
         )}
 
-        {/* Security Info */}
+        {/* Video Info */}
         {showControls && (
           <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 text-xs text-gray-400 bg-black bg-opacity-50 px-2 py-1 rounded">
-            🔐 URL segura • {formatTime(duration)} • {Math.round(file.size / 1024 / 1024)}MB
+            🔐 URL segura • {Math.round(file.size / 1024 / 1024)}MB • {playbackRate}x
           </div>
         )}
       </div>

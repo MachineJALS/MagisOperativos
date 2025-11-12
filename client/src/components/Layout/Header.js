@@ -1,32 +1,34 @@
+// client/src/components/Layout/Header.js - MEJORADO
 import React from 'react';
-import { LogOut, User } from 'lucide-react';
+import { Menu, User, LogOut } from 'lucide-react';
 
-const Header = ({ user, onLogout }) => {
+const Header = ({ onToggleSidebar }) => {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              MAGISOPERATIVOS
-            </h1>
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              Dashboard
-            </span>
-          </div>
+      <div className="flex items-center justify-between px-4 py-3 md:px-6">
+        {/* Left Side - Menu Button for Mobile */}
+        <button
+          onClick={onToggleSidebar}
+          className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <User size={18} />
-              <span>{user?.email}</span>
-            </div>
-            
-            <button
-              onClick={onLogout}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
-            >
-              <LogOut size={18} />
-              <span>Cerrar Sesión</span>
+        {/* Center - Logo/Brand */}
+        <div className="flex-1 md:flex-none text-center md:text-left">
+          <h1 className="text-xl font-bold text-gray-900">MagisOperativos</h1>
+          <p className="text-sm text-gray-600 hidden md:block">Sistema Multimedia Distribuido</p>
+        </div>
+
+        {/* Right Side - User Menu */}
+        <div className="flex items-center space-x-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-medium text-gray-900">Usuario</p>
+            <p className="text-xs text-gray-600">usuario@ejemplo.com</p>
+          </div>
+          <div className="relative">
+            <button className="flex items-center space-x-2 bg-gray-100 rounded-full p-2 hover:bg-gray-200 transition-colors">
+              <User className="h-5 w-5 text-gray-600" />
             </button>
           </div>
         </div>
