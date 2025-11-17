@@ -1,12 +1,23 @@
-// server/controllers/mediaController.js - VERSIÓN CORREGIDA
+// server/controllers/mediaController.js - VERSIÓN ACTUALIZADA
 const MediaConverter = require('../utils/ffmpeg');
 const { db } = require('../config/firebase');
 const path = require('path');
 const fs = require('fs-extra');
 
+// Función auxiliar para determinar carpetas
+const getStorageFolder = (fileType, isConverted = false) => {
+  if (isConverted) return 'converted';
+  switch (fileType) {
+    case 'audio': return 'audio';
+    case 'video': return 'video';
+    case 'image': return 'images';
+    default: return 'uploads';
+  }
+};
+
 const mediaController = {
   /**
-   * Convierte un archivo a otro formato - VERSIÓN CORREGIDA
+   * Convierte un archivo a otro formato - VERSIÓN MEJORADA
    */
   convertFile: async (req, res) => {
     try {
@@ -39,7 +50,7 @@ const mediaController = {
         });
       }
 
-      // 3. Verificar formatos soportados - CORREGIDO
+      // 3. Verificar formatos soportados
       const originalExt = path.extname(fileData.originalName).toLowerCase().slice(1);
       const supportedFormats = MediaConverter.getSupportedFormats();
       const allFormats = [];
@@ -64,68 +75,125 @@ const mediaController = {
         });
       }
 
-      // 5. Determinar configuración de calidad - CORREGIDO
+      // 5. Determinar rutas de archivo
+      const inputFolder = getStorageFolder(fileData.fileType);
+      const inputPath = path.join(__dirname, '../../storage', inputFolder, path.basename(fileData.storageInfo.path));
+      
+      const outputFolder = 'converted';
+      const outputFileName = `${path.parse(fileData.originalName).name}.${targetFormat}`;
+      const outputPath = path.join(__dirname, '../../storage', outputFolder, outputFileName);
+
+      // ✅ Asegurar que existe el directorio converted
+      await fs.ensureDir(path.dirname(outputPath));
+
+      console.log(`📁 Rutas de conversión:`);
+      console.log(`   Entrada: ${inputPath}`);
+      console.log(`   Salida: ${outputPath}`);
+
+      // 6. Verificar que el archivo de entrada existe
+      if (!await fs.pathExists(inputPath)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Archivo original no encontrado en el almacenamiento local'
+        });
+      }
+
+      // 7. Determinar configuración de calidad
       const conversionOptions = mediaController.getConversionOptions(quality, fileData.fileType);
       
       console.log(`🎯 Opciones de conversión:`, conversionOptions);
 
-      // 6. Simular conversión (implementar lógica real después)
-      // Por ahora, simulamos éxito para pruebas
-      const convertedFileData = {
-        originalName: `${path.parse(fileData.originalName).name}.${targetFormat}`,
-        fileType: fileData.fileType,
-        mimeType: MediaConverter.getMimeType(targetFormat),
-        size: Math.round(fileData.size * 0.7), // Simular reducción del 30%
-        ownerId: user.id,
-        ownerEmail: user.email,
-        permissions: [
-          {
-            userId: user.id,
-            email: user.email,
-            role: 'owner',
-            permissions: ['read', 'write', 'delete']
+      try {
+        // 8. Realizar conversión REAL
+        const conversionResult = await MediaConverter.convertFile(inputPath, outputPath, targetFormat, conversionOptions);
+        
+        console.log(`✅ Conversión exitosa: ${conversionResult.fileSize} bytes`);
+
+        // 9. Crear datos del archivo convertido
+        const convertedFileData = {
+          originalName: outputFileName,
+          fileType: fileData.fileType,
+          mimeType: MediaConverter.getMimeType(targetFormat),
+          size: conversionResult.fileSize,
+          ownerId: user.id,
+          ownerEmail: user.email,
+          permissions: [
+            {
+              userId: user.id,
+              email: user.email,
+              role: 'owner',
+              permissions: ['read', 'write', 'delete']
+            }
+          ],
+          storageInfo: {
+            storageType: 'local',
+            path: `${outputFolder}/${outputFileName}`
+          },
+          metadata: {
+            uploadDate: new Date().toISOString(),
+            originalFile: fileId,
+            conversion: {
+              originalFormat: originalExt,
+              targetFormat: targetFormat,
+              quality: quality,
+              conversionDate: new Date().toISOString(),
+              processingTime: conversionResult.processingTime || 0
+            }
           }
-        ],
-        storageInfo: {
-          storageType: uploadToCloud ? 's3' : 'local',
-          path: uploadToCloud ? 
-            `converted/${fileData.originalName.replace(/\.[^/.]+$/, '')}.${targetFormat}` : 
-            `converted/${fileData.originalName.replace(/\.[^/.]+$/, '')}.${targetFormat}`
-        },
-        metadata: {
-          uploadDate: new Date().toISOString(),
-          originalFile: fileId,
-          conversion: {
-            originalFormat: originalExt,
-            targetFormat: targetFormat,
-            quality: quality,
-            conversionDate: new Date().toISOString()
+        };
+
+        // 10. Guardar en base de datos
+        const convertedDoc = await db.collection('mediaFiles').add(convertedFileData);
+
+        // 11. Subir a S3 si se solicitó
+        if (uploadToCloud) {
+          try {
+            const AWSUploader = require('../services/awsUploader');
+            const uploadResult = await AWSUploader.uploadLocalFile(convertedFileData.storageInfo.path, 'converted');
+            
+            if (uploadResult.success) {
+              await db.collection('mediaFiles').doc(convertedDoc.id).update({
+                'storageInfo.storageType': 's3',
+                'storageInfo.s3Key': uploadResult.key,
+                'storageInfo.s3Url': uploadResult.location
+              });
+              console.log(`☁️  Archivo convertido subido a S3: ${uploadResult.key}`);
+            }
+          } catch (uploadError) {
+            console.error('⚠️  Error subiendo a S3:', uploadError);
+            // No fallar la conversión solo por error en S3
           }
         }
-      };
 
-      // Guardar en base de datos
-      const convertedDoc = await db.collection('mediaFiles').add(convertedFileData);
+        res.json({
+          success: true,
+          message: 'Conversión completada exitosamente',
+          convertedFile: {
+            id: convertedDoc.id,
+            name: convertedFileData.originalName,
+            format: targetFormat,
+            size: convertedFileData.size,
+            mimeType: convertedFileData.mimeType,
+            storageType: uploadToCloud ? 's3' : 'local'
+          },
+          conversionInfo: {
+            originalSize: fileData.size,
+            convertedSize: convertedFileData.size,
+            sizeReduction: Math.round((1 - convertedFileData.size / fileData.size) * 100),
+            quality: quality
+          }
+        });
 
-      console.log(`✅ Conversión simulada exitosa: ${fileData.originalName} -> ${targetFormat}`);
-
-      res.json({
-        success: true,
-        message: 'Conversión completada exitosamente',
-        convertedFile: {
-          id: convertedDoc.id,
-          name: convertedFileData.originalName,
-          format: targetFormat,
-          size: convertedFileData.size,
-          mimeType: convertedFileData.mimeType
-        },
-        conversionInfo: {
-          originalSize: fileData.size,
-          convertedSize: convertedFileData.size,
-          sizeReduction: Math.round((1 - convertedFileData.size / fileData.size) * 100),
-          quality: quality
+      } catch (conversionError) {
+        console.error('❌ Error en conversión FFmpeg:', conversionError);
+        
+        // Limpiar archivo de salida si existe
+        if (await fs.pathExists(outputPath)) {
+          await fs.remove(outputPath);
         }
-      });
+        
+        throw conversionError;
+      }
 
     } catch (error) {
       console.error('❌ Error en conversión:', error);
@@ -137,10 +205,7 @@ const mediaController = {
     }
   },
 
-  /**
-   * Obtiene formatos soportados para conversión - VERSIÓN MEJORADA
-   */
-  getSupportedFormats: (req, res) => {
+getSupportedFormats: (req, res) => {
     try {
       const { fileType } = req.query;
       
@@ -179,9 +244,6 @@ const mediaController = {
     }
   },
 
-  /**
-   * Obtiene información detallada de un archivo multimedia
-   */
   getFileInfo: async (req, res) => {
     try {
       const { fileId } = req.params;
@@ -249,24 +311,21 @@ const mediaController = {
     }
   },
 
-  /**
-   * Obtiene opciones de conversión según calidad - CORREGIDO
-   */
   getConversionOptions(quality, fileType) {
-    const baseOptions = {
-      audio: {
-        low: { audioBitrate: '64k', audioChannels: 1, audioFrequency: 22050 },
-        medium: { audioBitrate: '128k', audioChannels: 2, audioFrequency: 44100 },
-        high: { audioBitrate: '320k', audioChannels: 2, audioFrequency: 48000 }
-      },
-      video: {
-        low: { videoBitrate: '500k', size: '480x?', fps: 24, audioBitrate: '64k' },
-        medium: { videoBitrate: '1000k', size: '720x?', fps: 30, audioBitrate: '128k' },
-        high: { videoBitrate: '2500k', size: '1080x?', fps: 30, audioBitrate: '192k' }
-      }
-    };
+      const baseOptions = {
+        audio: {
+          low: { audioBitrate: '64k', audioChannels: 1, audioFrequency: 22050 },
+          medium: { audioBitrate: '128k', audioChannels: 2, audioFrequency: 44100 },
+          high: { audioBitrate: '320k', audioChannels: 2, audioFrequency: 48000 }
+        },
+        video: {
+          low: { videoBitrate: '500k', size: '480x?', fps: 24, audioBitrate: '64k' },
+          medium: { videoBitrate: '1000k', size: '720x?', fps: 30, audioBitrate: '128k' },
+          high: { videoBitrate: '2500k', size: '1080x?', fps: 30, audioBitrate: '192k' }
+        }
+      };
 
-    return baseOptions[fileType]?.[quality] || baseOptions[fileType]?.medium || {};
+      return baseOptions[fileType]?.[quality] || baseOptions[fileType]?.medium || {};
   }
 };
 

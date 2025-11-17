@@ -1,7 +1,8 @@
 // server/controllers/fileController.js - VERSIÓN COMPLETA CORREGIDA
 const storageManager = require('../utils/storage');
 const { db } = require('../config/firebase');
-const fs = require('fs');
+const fs = require('fs-extra');
+const path = require('path');
 
 class FileController {
     async uploadFile(req, res) {
@@ -315,6 +316,7 @@ class FileController {
             });
         }
     }
+
 }
 
 module.exports = new FileController();

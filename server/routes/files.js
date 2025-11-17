@@ -1,4 +1,4 @@
-// server/routes/files.js - VERSIÓN COMPLETA CON URLs FIRMADAS
+// server/routes/files.js - VERSIÓN COMPLETA CORREGIDA
 const express = require('express');
 const multer = require('multer');
 const { authenticateJWT } = require('../middleware/auth');
@@ -41,7 +41,10 @@ const upload = multer({
 // Aplicar autenticación a todas las rutas
 router.use(authenticateJWT);
 
-// Rutas de archivos existentes
+// =============================================
+// RUTAS PRINCIPALES EXISTENTES
+// =============================================
+
 router.post('/upload', upload.single('file'), fileController.uploadFile);
 router.get('/my-files', fileController.getUserFiles);
 router.get('/info/:fileId', fileController.getFileInfo);
@@ -314,5 +317,32 @@ router.get('/debug-firebase', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// =============================================
+// ENDPOINT PARA ESCANEAR STORAGE LOCAL
+// =============================================
+
+router.post('/scan-storage', authenticateJWT, async (req, res) => {
+  try {
+    const scanner = require('../services/storageScanner');
+    const results = await scanner.scanAndSync();
+    
+    res.json({
+      success: true,
+      message: 'Escaneo de storage completado',
+      results: results
+    });
+  } catch (error) {
+    console.error('Error escaneando storage:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error escaneando storage local'
+    });
+  }
+});
+
+// =============================================
+// ⚠️ NO AGREGAR MÁS RUTAS AQUÍ - ELIMINAR LAS RUTAS DUPLICADAS
+// =============================================
 
 module.exports = router;

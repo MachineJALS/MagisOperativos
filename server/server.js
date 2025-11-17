@@ -8,7 +8,9 @@ const passport = require('./config/passport');
 const fileRoutes = require('./routes/files');
 const path = require('path');
 const mediaRoutes = require('./routes/media');
-const nodeRoutes = require('./routes/nodes'); // ✅ Ya está importado
+const nodeRoutes = require('./routes/nodes');
+const uploadRoutes = require('./routes/upload');
+const debugRoutes = require('./routes/debug');
 
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
@@ -50,6 +52,12 @@ app.use(passport.session());
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
+
+// Rutas de subida a AWS S3
+app.use('/api/upload', uploadRoutes);
+
+// Rutas de debug y diagnóstico
+app.use('/api/debug', debugRoutes);
 
 // ✅ CORREGIDO: Usar rutas con sus controladores
 app.use('/auth', authRoutes);
