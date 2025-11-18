@@ -169,6 +169,33 @@ class StorageManager {
         };
         return contentTypes[ext] || 'application/octet-stream';
     }
+
+    async downloadFile(s3Key, localPath) {
+        try {
+            console.log(`📥 Descargando archivo de S3: ${s3Key} -> ${localPath}`);
+            
+            const params = {
+                Bucket: this.bucketName,
+                Key: s3Key
+            };
+
+            const data = await this.s3.getObject(params).promise();
+            
+            // Asegurar que el directorio existe
+            await fs.ensureDir(path.dirname(localPath));
+            
+            // Guardar archivo localmente
+            await fs.writeFile(localPath, data.Body);
+            
+            console.log(`✅ Descarga completada: ${localPath}`);
+            return { success: true, localPath };
+            
+        } catch (error) {
+            console.error('❌ Error descargando archivo de S3:', error);
+            throw new Error(`No se pudo descargar el archivo de S3: ${error.message}`);
+        }
+    }
+
 }
 
 // 🔥 EXPORTA LA INSTANCIA CORRECTAMENTE

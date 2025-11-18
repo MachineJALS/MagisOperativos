@@ -1,10 +1,23 @@
-// client/src/components/Dashboard/FileList.js
-import React, { useState, useEffect } from 'react';
-import { File, Play, Download, Music, Video, Image, RefreshCw, Cloud, HardDrive } from 'lucide-react';
+// client/src/components/Dashboard/FileList.js - VERSIÓN MEJORADA CON SCROLL
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  File, 
+  Play, 
+  Download, 
+  Music, 
+  Video, 
+  Image, 
+  RefreshCw, 
+  Cloud, 
+  HardDrive,
+  Search,
+  Filter
+} from 'lucide-react';
 import { filesAPI } from '../../services/api';
-import { Card, CardContent, CardHeader } from '../UI/Card';
 import AudioPlayer from '../Media/AudioPlayer';
 import VideoPlayer from '../Media/VideoPlayer';
+import ConversionPanel from '../Media/ConversionPanel';
+import './FileList.css'; // ✅ CSS para scroll y responsive
 
 const FileList = () => {
   const [files, setFiles] = useState([]);
@@ -13,12 +26,10 @@ const FileList = () => {
   const [syncing, setSyncing] = useState(false);
   const [currentAudio, setCurrentAudio] = useState(null);
   const [currentVideo, setCurrentVideo] = useState(null);
+  const [currentConversion, setCurrentConversion] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    loadFiles();
-  }, [filter]);
-
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     try {
       setLoading(true);
       const type = filter === 'all' ? '' : filter;
@@ -29,7 +40,11 @@ const FileList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    loadFiles();
+  }, [loadFiles]);
 
   const syncS3Files = async () => {
     try {
@@ -96,19 +111,16 @@ const FileList = () => {
     try {
       console.log('📥 Iniciando descarga de:', file.originalName);
       
-      // Obtener URL firmada para descarga
       const response = await filesAPI.getDownloadUrl(file.id);
       const downloadUrl = response.data.downloadUrl;
       
       console.log('✅ URL de descarga obtenida');
 
-      // Crear enlace de descarga temporal
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = file.originalName;
       link.target = '_blank';
       
-      // Agregar al DOM y hacer clic
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -121,106 +133,171 @@ const FileList = () => {
     }
   };
 
+  const handleConvertFile = (file) => {
+    setCurrentConversion(file);
+  };
+
+  const handleConversionComplete = (convertedFile) => {
+    console.log('✅ Conversión completada:', convertedFile);
+    loadFiles();
+  };
+
+  // ✅ Filtrar archivos por búsqueda y tipo
   const filteredFiles = files.filter(file => {
-    if (filter === 'all') return true;
-    return file.fileType === filter;
+    const matchesFilter = filter === 'all' || file.fileType === filter;
+    const matchesSearch = file.originalName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mis Archivos</h1>
-          <p className="text-gray-600">Gestiona tus archivos multimedia</p>
+    <div className="file-list-container">
+      {/* Header Compacto */}
+      <div className="file-list-header">
+        <div className="header-content">
+          <div className="header-title">
+            <h1 className="text-xl font-bold text-gray-900">Mis Archivos</h1>
+            <p className="text-sm text-gray-600">Gestiona tus archivos multimedia</p>
+          </div>
+          <button
+            onClick={syncS3Files}
+            disabled={syncing}
+            className="sync-button"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            <span>{syncing ? 'Sincronizando...' : 'Sincronizar S3'}</span>
+          </button>
         </div>
-        <button
-          onClick={syncS3Files}
-          disabled={syncing}
-          className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          <span>{syncing ? 'Sincronizando...' : '🔄 Sincronizar S3'}</span>
-        </button>
+
+        {/* Búsqueda */}
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Buscar archivos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+        </div>
+
+        {/* Filtros Compactos */}
+        <div className="filters-container">
+          {['all', 'audio', 'video', 'image'].map((type) => (
+            <button
+              key={type}
+              onClick={() => setFilter(type)}
+              className={`filter-button ${filter === type ? 'filter-button-active' : ''}`}
+            >
+              {type === 'all' && '📁 Todos'}
+              {type === 'audio' && '🎵 Audio'}
+              {type === 'video' && '🎬 Video'}
+              {type === 'image' && '🖼️ Imágenes'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* File List */}
-      <Card>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Cargando archivos...</p>
-            </div>
-          ) : filteredFiles.length === 0 ? (
-            <div className="text-center py-8">
-              <File className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay archivos</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {filter === 'all' 
-                  ? 'Comienza sincronizando con S3.' 
-                  : `No hay archivos de tipo ${filter}.`}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredFiles.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center space-x-3">
-                    {getFileIcon(file.fileType)}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {file.originalName}
-                      </h3>
-                      <div className="flex items-center space-x-2 text-xs text-gray-500">
-                        <span>{formatFileSize(file.size)}</span>
-                        <span>•</span>
-                        <span>{formatDate(file.metadata.uploadDate)}</span>
-                        <span>•</span>
-                        {getStorageIcon(file.storageInfo?.storageType)}
-                        <span>{file.storageInfo?.storageType === 's3' ? 'S3' : 'Local'}</span>
-                        {file.storageInfo?.storageType === 's3' && (
-                          <span className="text-blue-500">🔐</span>
-                        )}
-                      </div>
+      {/* Lista de Archivos - Scrollable */}
+      <div className="files-content">
+        {loading ? (
+          <div className="loading-state">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-sm text-gray-600">Cargando archivos...</p>
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="empty-state">
+            <File className="h-10 w-10 text-gray-400 mb-3" />
+            <h3 className="text-sm font-medium text-gray-900 text-center">No hay archivos</h3>
+            <p className="text-xs text-gray-500 text-center mt-1">
+              {filter === 'all' 
+                ? 'Comienza sincronizando con S3.' 
+                : `No hay archivos de tipo ${filter}.`}
+            </p>
+          </div>
+        ) : (
+          <div className="files-list">
+            {filteredFiles.map((file) => (
+              <div key={file.id} className="file-item">
+                <div className="file-info">
+                  {getFileIcon(file.fileType)}
+                  <div className="file-details">
+                    <h3 className="file-name">{file.originalName}</h3>
+                    <div className="file-meta">
+                      <span>{formatFileSize(file.size)}</span>
+                      <span>•</span>
+                      <span>{formatDate(file.metadata.uploadDate)}</span>
+                      <span>•</span>
+                      {getStorageIcon(file.storageInfo?.storageType)}
+                      <span>{file.storageInfo?.storageType === 's3' ? 'S3' : 'Local'}</span>
+                      
+                      {file.metadata?.conversion && (
+                        <>
+                          <span>•</span>
+                          <span className="conversion-badge">Convertido</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {(file.fileType === 'audio' || file.fileType === 'video') && (
-                      <button 
-                        onClick={() => handlePlayFile(file)}
-                        className="p-2 text-green-600 hover:text-green-700 transition-colors"
-                        title="Reproducir"
-                      >
-                        <Play className="h-4 w-4" />
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => handleDownloadFile(file)}
-                      className="p-2 text-blue-600 hover:text-blue-700 transition-colors"
-                      title="Descargar"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                
+                {/* Botones de Acción Compactos */}
+                <div className="file-actions">
+                  {(file.fileType === 'audio' || file.fileType === 'video') && (
+                    <button 
+                      onClick={() => handlePlayFile(file)}
+                      className="action-button play-button"
+                      title="Reproducir"
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  
+                  {(file.fileType === 'audio' || file.fileType === 'video') && (
+                    <button 
+                      onClick={() => handleConvertFile(file)}
+                      className="action-button convert-button"
+                      title="Convertir archivo"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  
+                  <button 
+                    onClick={() => handleDownloadFile(file)}
+                    className="action-button download-button"
+                    title="Descargar"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* Reproductores */}
+      {/* Modales */}
       {currentAudio && (
         <AudioPlayer 
           file={currentAudio} 
           onClose={() => setCurrentAudio(null)} 
         />
       )}
+      
       {currentVideo && (
         <VideoPlayer 
           file={currentVideo} 
           onClose={() => setCurrentVideo(null)} 
+        />
+      )}
+      
+      {currentConversion && (
+        <ConversionPanel 
+          file={currentConversion} 
+          onClose={() => setCurrentConversion(null)}
+          onConversionComplete={handleConversionComplete}
         />
       )}
     </div>

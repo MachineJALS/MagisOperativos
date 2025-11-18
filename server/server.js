@@ -7,6 +7,10 @@ const session = require('express-session');
 const passport = require('./config/passport');
 const fileRoutes = require('./routes/files');
 const path = require('path');
+const mediaRoutes = require('./routes/media');
+const nodeRoutes = require('./routes/nodes');
+const uploadRoutes = require('./routes/upload');
+const debugRoutes = require('./routes/debug');
 
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
@@ -16,17 +20,16 @@ console.log('CLIENT_URL:', process.env.CLIENT_URL || '❌ NO CONFIGURADO');
 console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✅' : '❌');
 console.log('PORT:', process.env.PORT);
 
-
 // Configurar variables de entorno
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares básicos
+// ✅ CORREGIDO: Middlewares en orden correcto
 app.use(helmet());
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: process.env.CLIENT_URL || 'http://localhost:3001', // ⚠️ Cambié a 3001 para el cliente
     credentials: true
 }));
 app.use(express.json());
@@ -34,7 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Configurar sesiones
 app.use(session({
-    secret: process.env.JWT_SECRET,
+    secret: process.env.JWT_SECRET || 'fallback-secret-for-dev',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -50,8 +53,17 @@ app.use(passport.session());
 // Importar rutas
 const authRoutes = require('./routes/auth');
 
-// Usar rutas
+// Rutas de subida a AWS S3
+app.use('/api/upload', uploadRoutes);
+
+// Rutas de debug y diagnóstico
+app.use('/api/debug', debugRoutes);
+
+// ✅ CORREGIDO: Usar rutas con sus controladores
 app.use('/auth', authRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/nodes', nodeRoutes); // ✅ AGREGADO el segundo parámetro
 
 // Rutas básicas de prueba
 app.get('/', (req, res) => {
@@ -60,14 +72,14 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         endpoints: {
             auth: '/auth/google',
+            files: '/api/files',
+            media: '/api/media',
+            nodes: '/api/nodes',
             health: '/health'
         },
         timestamp: new Date().toISOString()
     });
 });
-
-// Rutas de archivos
-app.use('/api/files', fileRoutes);
 
 // Health check mejorado
 app.get('/health', (req, res) => {
@@ -95,7 +107,7 @@ app.use('*', (req, res) => {
     res.status(404).json({ 
         error: 'Ruta no encontrada',
         path: req.originalUrl,
-        availableEndpoints: ['/auth/google', '/health']
+        availableEndpoints: ['/auth/google', '/health', '/api/files', '/api/media', '/api/nodes']
     });
 });
 
