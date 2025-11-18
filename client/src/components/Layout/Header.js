@@ -1,36 +1,68 @@
-// client/src/components/Layout/Header.js - MEJORADO
+// client/src/components/Layout/Header.js - VERSIÓN SIN CSS
 import React from 'react';
-import { Menu, User, LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react'; // ✅ Removido Settings
+import { authAPI } from '../../services/api';
 
-const Header = ({ onToggleSidebar }) => {
+const Header = ({ user, onLogout }) => {
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      localStorage.removeItem('token');
+      if (onLogout) {
+        onLogout();
+      }
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error haciendo logout:', error);
+      // Forzar logout localmente
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+  };
+
+  const handleLogin = () => {
+    authAPI.loginWithGoogle();
+  };
+
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="flex items-center justify-between px-4 py-3 md:px-6">
-        {/* Left Side - Menu Button for Mobile */}
-        <button
-          onClick={onToggleSidebar}
-          className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
-        {/* Center - Logo/Brand */}
-        <div className="flex-1 md:flex-none text-center md:text-left">
-          <h1 className="text-xl font-bold text-gray-900">MagisOperativos</h1>
-          <p className="text-sm text-gray-600 hidden md:block">Sistema Multimedia Distribuido</p>
+    <header className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="flex justify-between items-center px-6 py-4">
+        {/* Logo y Título */}
+        <div className="flex items-center space-x-3">
+          <h1 className="text-xl font-bold text-gray-900">
+            🎵 MagisOperativos
+          </h1>
+          <span className="text-sm text-gray-500 hidden sm:inline-block">
+            Sistema Multimedia Distribuido
+          </span>
         </div>
 
-        {/* Right Side - User Menu */}
-        <div className="flex items-center space-x-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-900">Usuario</p>
-            <p className="text-xs text-gray-600">usuario@ejemplo.com</p>
-          </div>
-          <div className="relative">
-            <button className="flex items-center space-x-2 bg-gray-100 rounded-full p-2 hover:bg-gray-200 transition-colors">
-              <User className="h-5 w-5 text-gray-600" />
+        {/* Sección de Usuario */}
+        <div className="flex items-center space-x-4">
+          {user ? (
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-gray-700">
+                <User className="w-5 h-5" />
+                <span className="font-medium">{user.email}</span>
+              </div>
+              <button 
+                className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition-colors"
+                onClick={handleLogout}
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            </div>
+          ) : (
+            <button 
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              onClick={handleLogin}
+            >
+              <User className="w-4 h-4" />
+              <span>Iniciar sesión con Google</span>
             </button>
-          </div>
+          )}
         </div>
       </div>
     </header>

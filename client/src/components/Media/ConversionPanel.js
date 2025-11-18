@@ -1,36 +1,30 @@
-// client/src/components/Media/ConversionPanel.js - VERSIÓN RESPONSIVE CORREGIDA
+// client/src/components/Media/ConversionPanel.js - VERSIÓN CORREGIDA
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Download, X, Settings, Cloud, HardDrive, Info } from 'lucide-react';
-import { mediaAPI } from '../../services/api';
+import { RefreshCw, X, Settings, Info } from 'lucide-react';
+import { filesAPI } from '../../services/api';
 
 const ConversionPanel = ({ file, onClose, onConversionComplete }) => {
   const [targetFormat, setTargetFormat] = useState('');
   const [quality, setQuality] = useState('medium');
-  const [uploadToCloud, setUploadToCloud] = useState(false);
   const [converting, setConverting] = useState(false);
   const [formats, setFormats] = useState([]);
 
   useEffect(() => {
-    const loadFormats = async () => {
-      try {
-        const response = await mediaAPI.getSupportedFormats(file.fileType);
-        const fileFormats = response.data.formats[file.fileType] || response.data.formats;
-        setFormats(fileFormats);
-        
-        const recommended = fileFormats.find(f => f.recommended);
-        setTargetFormat(recommended ? recommended.value : (fileFormats[0]?.value || ''));
-      } catch (error) {
-        console.error('Error cargando formatos:', error);
-        setFormats(file.fileType === 'audio' ? [
-          { value: 'mp3', label: 'MP3', description: 'Compatible universal', recommended: true },
-          { value: 'wav', label: 'WAV', description: 'Calidad sin pérdida', recommended: false },
-          { value: 'flac', label: 'FLAC', description: 'Comprimido sin pérdida', recommended: true }
-        ] : [
-          { value: 'mp4', label: 'MP4', description: 'Compatible universal', recommended: true },
-          { value: 'webm', label: 'WebM', description: 'Optimizado para web', recommended: false }
-        ]);
-        setTargetFormat('mp3');
-      }
+    const loadFormats = () => {
+      const defaultFormats = file.fileType === 'audio' ? [
+        { value: 'mp3', label: 'MP3', description: 'Compatible universal', recommended: true },
+        { value: 'wav', label: 'WAV', description: 'Calidad sin pérdida', recommended: false },
+        { value: 'flac', label: 'FLAC', description: 'Comprimido sin pérdida', recommended: false }
+      ] : [
+        { value: 'mp4', label: 'MP4', description: 'Compatible universal', recommended: true },
+        { value: 'webm', label: 'WebM', description: 'Optimizado para web', recommended: false },
+        { value: 'avi', label: 'AVI', description: 'Formato antiguo', recommended: false }
+      ];
+      
+      setFormats(defaultFormats);
+      
+      const recommended = defaultFormats.find(f => f.recommended);
+      setTargetFormat(recommended ? recommended.value : (defaultFormats[0]?.value || ''));
     };
 
     loadFormats();
@@ -44,23 +38,44 @@ const ConversionPanel = ({ file, onClose, onConversionComplete }) => {
 
     setConverting(true);
     try {
-      const response = await mediaAPI.convertFile(
-        file.id, 
-        targetFormat, 
-        quality, 
-        uploadToCloud
-      );
+      console.log('🔄 Iniciando conversión real...', {
+        fileId: file.id,
+        targetFormat: targetFormat,
+        fileType: file.fileType
+      });
 
-      if (onConversionComplete) {
-        onConversionComplete(response.data.convertedFile);
+      const response = await filesAPI.convertReal(file.id, targetFormat);
+
+      if (response.data.success) {
+        console.log('✅ Conversión exitosa:', response.data.convertedFile);
+        
+        if (onConversionComplete) {
+          onConversionComplete(response.data.convertedFile);
+        }
+
+        const conversionInfo = response.data.conversionInfo;
+        const message = conversionInfo.type === 'simulated' 
+          ? `✅ Conversión SIMULADA completada!\n\n` +
+            `Archivo convertido: ${response.data.convertedFile.name}\n` +
+            `Formato: ${response.data.convertedFile.format}\n` +
+            `Reducción de tamaño: ${response.data.convertedFile.sizeReduction}%\n` +
+            `Nota: Conversión real requiere procesamiento local`
+          : `✅ Conversión REAL completada!\n\n` +
+            `Archivo convertido: ${response.data.convertedFile.name}\n` +
+            `Formato: ${response.data.convertedFile.format}\n` +
+            `Tamaño: ${Math.round(response.data.convertedFile.size / 1024 / 1024)}MB\n` +
+            `Reducción: ${response.data.convertedFile.sizeReduction}%`;
+
+        alert(message);
+        
+        onClose();
+      } else {
+        throw new Error(response.data.error || 'Error desconocido en la conversión');
       }
-
-      alert(`✅ Conversión completada exitosamente!\n\nArchivo: ${response.data.convertedFile.originalName}\nReducción de tamaño: ${response.data.conversionInfo.sizeReduction}%\nAlmacenamiento: ${uploadToCloud ? 'Nube ☁️' : 'Local 💻'}`);
-      
-      onClose();
     } catch (error) {
-      console.error('Error en conversión:', error);
-      alert('❌ Error en conversión: ' + (error.response?.data?.error || error.message));
+      console.error('❌ Error en conversión:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Error de conexión';
+      alert(`❌ Error en conversión: ${errorMessage}\n\nNota: Los archivos en AWS S3 requieren conversión simulada por ahora.`);
     } finally {
       setConverting(false);
     }
@@ -94,8 +109,8 @@ const ConversionPanel = ({ file, onClose, onConversionComplete }) => {
               <div className="min-w-0">
                 <p className="font-medium text-gray-900 text-sm sm:text-base">Archivo original</p>
                 <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  {file.fileType === 'audio' ? '🎵' : '🎬'} {file.fileType?.toUpperCase()} • 
-                  {Math.round(file.size / 1024 / 1024)}MB
+                  {file.fileType === 'audio' ? '🎵' : file.fileType === 'video' ? '🎬' : '🖼️'} 
+                  {file.fileType?.toUpperCase()} • {Math.round(file.size / 1024 / 1024)}MB
                 </p>
               </div>
               <Info className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
@@ -175,48 +190,6 @@ const ConversionPanel = ({ file, onClose, onConversionComplete }) => {
             </div>
           </div>
 
-          {/* Almacenamiento */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
-              Destino del archivo convertido
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              <label className={`flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 border rounded-lg cursor-pointer transition-all ${
-                !uploadToCloud ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-              }`}>
-                <input
-                  type="radio"
-                  name="storage"
-                  checked={!uploadToCloud}
-                  onChange={() => setUploadToCloud(false)}
-                  className="text-blue-600 focus:ring-blue-500 flex-shrink-0"
-                />
-                <HardDrive className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
-                <div className="min-w-0">
-                  <span className="font-medium text-gray-900 text-sm sm:text-base">Almacenamiento Local</span>
-                  <p className="text-xs text-gray-600">Archivo guardado en el servidor</p>
-                </div>
-              </label>
-
-              <label className={`flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 border rounded-lg cursor-pointer transition-all ${
-                uploadToCloud ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'
-              }`}>
-                <input
-                  type="radio"
-                  name="storage"
-                  checked={uploadToCloud}
-                  onChange={() => setUploadToCloud(true)}
-                  className="text-blue-600 focus:ring-blue-500 flex-shrink-0"
-                />
-                <Cloud className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
-                <div className="min-w-0">
-                  <span className="font-medium text-gray-900 text-sm sm:text-base">Almacenamiento en Nube</span>
-                  <p className="text-xs text-gray-600">Subir a AWS S3/Firebase</p>
-                </div>
-              </label>
-            </div>
-          </div>
-
           {/* Información de conversión */}
           {targetFormat && (
             <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
@@ -235,7 +208,7 @@ const ConversionPanel = ({ file, onClose, onConversionComplete }) => {
                   <strong>Calidad:</strong> {quality === 'low' ? 'Baja' : quality === 'medium' ? 'Media' : 'Alta'}
                 </div>
                 <div>
-                  <strong>Almacenamiento:</strong> {uploadToCloud ? 'Nube ☁️' : 'Local 💻'}
+                  <strong>Almacenamiento:</strong> Nube ☁️ (AWS S3)
                 </div>
               </div>
             </div>

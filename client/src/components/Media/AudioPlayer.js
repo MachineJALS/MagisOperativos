@@ -1,70 +1,122 @@
-// client/src/components/Media/AudioPlayer.js - VERSIÓN CORREGIDA
+// client/src/components/Media/AudioPlayer.js - VERSIÓN DEFINITIVA CORREGIDA
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, X, Download } from 'lucide-react';
 import { filesAPI } from '../../services/api';
+import './AudioPlayer.css';
 
 const AudioPlayer = ({ file, onClose }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
-  const [signedUrl, setSignedUrl] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isReady, setIsReady] = useState(false);
   
   const audioRef = useRef(null);
 
   useEffect(() => {
-    const loadSignedUrl = async () => {
+    const loadAudioUrl = async () => {
       try {
         setLoading(true);
-        console.log('🎵 Cargando audio:', file.id);
+        setError(null);
+        console.log('🎵 Cargando audio:', {
+          id: file.id,
+          name: file.originalName,
+          storage: file.storageInfo?.storageType,
+          isConverted: file.isConvertedFile
+        });
+
+        let url;
         
-        const response = await filesAPI.getSignedUrl(file.id);
-        const url = response.data.signedUrl;
-        console.log('✅ URL obtenida:', url);
+        // ✅ DETERMINAR TIPO DE ARCHIVO Y OBTENER URL CORRECTA
+        if (file.storageInfo?.storageType === 'local') {
+          // Para archivos locales, usar URL directa
+          url = filesAPI.getLocalFileUrl(file);
+          console.log('📁 Usando archivo local:', url);
+        } else if (file.storageInfo?.storageType === 's3') {
+          // Para archivos en S3, obtener URL firmada
+          console.log('🔐 Obteniendo URL firmada para S3');
+          const response = await filesAPI.getSignedUrl(file.id);
+          if (response.data.success) {
+            url = response.data.signedUrl;
+            console.log('✅ URL firmada obtenida');
+          } else {
+            throw new Error('No se pudo obtener URL firmada para S3');
+          }
+        } else {
+          // Fallback: intentar usar URL directa
+          url = file.downloadUrl || file.storageInfo?.url;
+          console.log('🔄 Usando URL directa:', url);
+        }
+
+        // ✅ VERIFICAR QUE LA URL NO SEA UNDEFINED
+        if (!url) {
+          throw new Error('No se pudo generar URL para el archivo');
+        }
+
+        setAudioUrl(url);
         
-        setSignedUrl(url);
       } catch (err) {
-        console.error('❌ Error:', err);
-        setError('No se pudo cargar el audio: ' + err.message);
+        console.error('❌ Error cargando audio:', err);
+        const errorMessage = err.response?.data?.error || err.message || 'Error desconocido';
+        setError(`No se pudo cargar el audio: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
 
     if (file) {
-      loadSignedUrl();
+      loadAudioUrl();
     }
+
+    // Cleanup al desmontar
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
   }, [file]);
 
   // Controladores del audio nativo
-  const togglePlay = () => {
-    if (audioRef.current) {
+  const togglePlay = async () => {
+    if (!audioRef.current || !isReady) return;
+
+    try {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
-        audioRef.current.play().catch(e => {
-          console.error('Error al reproducir:', e);
-          setError('Error al reproducir: ' + e.message);
-        });
+        // Prevenir el error de interrupción
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
+        }
       }
-      setIsPlaying(!isPlaying);
+    } catch (err) {
+      console.error('Error al reproducir:', err);
+      setError('Error al reproducir: ' + err.message);
     }
   };
 
   const toggleMute = () => {
     if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+      const newMutedState = !isMuted;
+      audioRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
     }
   };
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime);
-      setDuration(audioRef.current.duration || 0);
+      if (audioRef.current.duration && !duration) {
+        setDuration(audioRef.current.duration);
+      }
     }
   };
 
@@ -81,37 +133,122 @@ const AudioPlayer = ({ file, onClose }) => {
     setVolume(newVolume);
     if (audioRef.current) {
       audioRef.current.volume = newVolume;
+      if (newVolume === 0) {
+        setIsMuted(true);
+      } else if (isMuted) {
+        setIsMuted(false);
+      }
     }
   };
 
   const handleDownload = async () => {
     try {
-      const response = await filesAPI.getDownloadUrl(file.id);
+      let downloadUrl;
+      
+      if (file.storageInfo?.storageType === 'local') {
+        // Para archivos locales, descarga directa
+        downloadUrl = filesAPI.getLocalFileUrl(file);
+      } else {
+        // Para S3, obtener URL de descarga firmada
+        const response = await filesAPI.getDownloadUrl(file.id);
+        if (response.data.success) {
+          downloadUrl = response.data.downloadUrl;
+        } else {
+          throw new Error('No se pudo obtener URL de descarga');
+        }
+      }
+
       const link = document.createElement('a');
-      link.href = response.data.downloadUrl;
+      link.href = downloadUrl;
       link.download = file.originalName;
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
     } catch (error) {
       console.error('Error descargando:', error);
-      alert('❌ Error al descargar');
+      setError('Error al descargar el archivo');
     }
   };
 
+  const handleCanPlay = () => {
+    console.log('✅ Audio listo para reproducir');
+    setIsReady(true);
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    console.log('📊 Metadatos del audio cargados');
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleError = (e) => {
+    console.error('❌ Error de audio:', e);
+    const audioElement = e.target;
+    console.log('Audio error details:', {
+      error: audioElement.error,
+      networkState: audioElement.networkState,
+      readyState: audioElement.readyState,
+      src: audioElement.src
+    });
+    
+    let errorMsg = 'Error al cargar el archivo de audio. ';
+    
+    if (!audioUrl) {
+      errorMsg += 'No se pudo generar la URL del archivo.';
+    } else if (audioElement.error) {
+      switch (audioElement.error.code) {
+        case audioElement.error.MEDIA_ERR_ABORTED:
+          errorMsg += 'La reproducción fue abortada.';
+          break;
+        case audioElement.error.MEDIA_ERR_NETWORK:
+          errorMsg += 'Error de red. Verifica tu conexión.';
+          break;
+        case audioElement.error.MEDIA_ERR_DECODE:
+          errorMsg += 'Error al decodificar el archivo. Formato no soportado.';
+          break;
+        case audioElement.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMsg += 'Formato de archivo no soportado.';
+          break;
+        default:
+          errorMsg += 'Error desconocido.';
+      }
+    } else {
+      errorMsg += 'Verifica que el archivo exista en el servidor.';
+    }
+    
+    setError(errorMsg);
+  };
+
   const formatTime = (seconds) => {
-    if (isNaN(seconds)) return '0:00';
+    if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const getStorageInfo = () => {
+    if (file.storageInfo?.storageType === 'local') {
+      return '📁 Archivo local';
+    } else if (file.storageInfo?.storageType === 's3') {
+      return '☁️ Archivo en la nube';
+    }
+    return '📄 Archivo';
+  };
+
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando audio...</p>
+      <div className="audio-player-overlay">
+        <div className="audio-player-container">
+          <div className="text-center">
+            <div className="loading-spinner"></div>
+            <p className="text-gray-600 mt-4">Cargando audio...</p>
+          </div>
         </div>
       </div>
     );
@@ -119,18 +256,26 @@ const AudioPlayer = ({ file, onClose }) => {
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md">
+      <div className="audio-player-overlay">
+        <div className="audio-player-container">
           <div className="text-center">
             <div className="text-red-500 text-4xl mb-4">❌</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Error</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button
-              onClick={onClose}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Cerrar
-            </button>
+            <p className="text-gray-600 mb-4 whitespace-pre-wrap">{error}</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={onClose}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -138,106 +283,135 @@ const AudioPlayer = ({ file, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md p-6">
+    <div className="audio-player-overlay">
+      <div className="audio-player-container">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
-              {file.originalName}
-            </h3>
-            <p className="text-sm text-gray-600">🎵 Audio • {file.fileType}</p>
+        <div className="audio-player-header">
+          <div className="audio-player-info">
+            <h2 className="audio-title">{file.originalName}</h2>
+            <p className="audio-subtitle">
+              🎵 {file.fileType?.toUpperCase()} • {Math.round(file.size / 1024 / 1024)}MB
+              {file.isConvertedFile && ' • 🎯 Convertido'}
+            </p>
           </div>
-          <div className="flex space-x-2">
+          <div className="audio-player-actions">
             <button 
               onClick={handleDownload}
-              className="text-gray-500 hover:text-blue-600 transition-colors p-1"
+              className="audio-action-btn"
               title="Descargar"
             >
-              <Download className="h-5 w-5" />
+              <Download className="audio-icon" />
             </button>
             <button 
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 p-1"
+              className="audio-action-btn close-btn"
             >
-              <X className="h-6 w-6" />
+              <X className="audio-icon" />
             </button>
           </div>
         </div>
 
-        {/* Audio Element (hidden) */}
-        <audio
-          ref={audioRef}
-          src={signedUrl}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleTimeUpdate}
-          onEnded={() => setIsPlaying(false)}
-          onError={(e) => {
-            console.error('Error de audio:', e);
-            setError('Error al cargar el archivo de audio');
-          }}
-          preload="metadata"
-        />
-
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+        {/* Audio Visualization */}
+        <div className="audio-player-content">
+          <div className="audio-visualization">
+            <div className="sound-waves">
+              {[...Array(20)].map((_, i) => (
+                <div 
+                  key={i}
+                  className="sound-bar"
+                  style={{
+                    animationDelay: `${i * 0.1}s`,
+                    height: isPlaying ? `${Math.random() * 50 + 10}px` : '10px'
+                  }}
+                />
+              ))}
+            </div>
           </div>
-          <input
-            type="range"
-            min="0"
-            max={duration || 0}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+
+          {/* Audio Element (hidden) */}
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onCanPlay={handleCanPlay}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => setIsPlaying(false)}
+            onError={handleError}
+            preload="metadata"
+            className="audio-element"
           />
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={togglePlay}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition-colors"
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="h-6 w-6" />
-                <span className="font-medium">Pausar</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-6 w-6" />
-                <span className="font-medium">Reproducir</span>
-              </>
-            )}
-          </button>
-
-          <div className="flex items-center space-x-3">
-            <button 
-              onClick={toggleMute}
-              className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </button>
+        <div className="audio-player-controls">
+          {/* Progress Bar */}
+          <div className="progress-container">
+            <span className="time-display current-time">{formatTime(currentTime)}</span>
             <input
               type="range"
               min="0"
-              max="1"
-              step="0.1"
-              value={volume}
-              onChange={handleVolumeChange}
-              className="w-20 accent-blue-600"
+              max={duration || 0}
+              value={currentTime}
+              onChange={handleSeek}
+              className="progress-bar"
+              disabled={!isReady}
             />
+            <span className="time-display total-time">{formatTime(duration)}</span>
+          </div>
+
+          {/* Control Buttons */}
+          <div className="control-buttons">
+            <div className="playback-controls">
+              <button 
+                onClick={togglePlay}
+                disabled={!isReady}
+                className="play-pause-btn"
+              >
+                {isPlaying ? (
+                  <Pause className="play-icon" />
+                ) : (
+                  <Play className="play-icon" />
+                )}
+              </button>
+            </div>
+
+            <div className="volume-controls">
+              <button 
+                onClick={toggleMute}
+                className="volume-btn"
+              >
+                {isMuted ? (
+                  <VolumeX className="control-icon" />
+                ) : (
+                  <Volume2 className="control-icon" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="volume-slider"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Info */}
-        <div className="mt-4 text-center">
-          <div className="text-sm text-gray-500">
-            🔐 URL segura • {formatTime(duration)} • {Math.round(file.size / 1024 / 1024)}MB
+        {/* Footer Info */}
+        <div className="audio-player-footer">
+          <div className="storage-info">
+            {getStorageInfo()} • {formatTime(duration)} • {Math.round(file.size / 1024 / 1024)}MB
+            {file.isConvertedFile && ' • 🎯 Conversión ' + (file.metadata?.conversionType || 'simulada')}
           </div>
+          {file.storageInfo?.storageType === 'local' && (
+            <div className="text-xs text-blue-600 mt-1">
+              📍 Ruta: {file.storageInfo?.actualPath || file.storageInfo?.path}
+            </div>
+          )}
         </div>
       </div>
     </div>

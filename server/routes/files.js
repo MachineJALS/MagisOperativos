@@ -1,4 +1,4 @@
-// server/routes/files.js - VERSIÓN COMPLETA CORREGIDA
+// server/routes/files.js - VERSIÓN CORREGIDA SIN ERRORES
 const express = require('express');
 const multer = require('multer');
 const { authenticateJWT } = require('../middleware/auth');
@@ -6,6 +6,7 @@ const fileController = require('../controllers/fileController');
 const S3Sync = require('../scripts/syncS3Files');
 const { db } = require('../config/firebase');
 const AWS = require('aws-sdk');
+const LoadBalancer = require('../utils/loadBalancer');
 
 const router = express.Router();
 
@@ -42,9 +43,11 @@ const upload = multer({
 router.use(authenticateJWT);
 
 // =============================================
-// RUTAS PRINCIPALES EXISTENTES
+// RUTAS PRINCIPALES EXISTENTES - CORREGIDAS
 // =============================================
 
+router.get('/', fileController.getUserFiles);
+router.post('/convert-real', fileController.convertFileReal);
 router.post('/upload', upload.single('file'), fileController.uploadFile);
 router.get('/my-files', fileController.getUserFiles);
 router.get('/info/:fileId', fileController.getFileInfo);
@@ -52,6 +55,11 @@ router.get('/test-storage', fileController.testStorage);
 router.get('/all', fileController.getAllFiles);
 router.post('/:fileId/download-to-local', fileController.downloadToLocal);
 router.post('/:fileId/upload-to-cloud', fileController.uploadToCloud);
+
+// ✅ NUEVAS RUTAS PARA ARCHIVOS LOCALES
+router.get('/scan-local', fileController.scanLocalFiles);
+router.get('/local/:type/:filename', fileController.serveLocalFile);
+router.get('/local/converted/:filename', fileController.serveLocalFile);
 
 // =============================================
 // NUEVOS ENDPOINTS PARA URLs FIRMADAS S3
@@ -219,6 +227,138 @@ router.get('/download-url/:fileId', async (req, res) => {
 });
 
 // =============================================
+// ✅ NUEVOS ENDPOINTS PARA SISTEMA DISTRIBUIDO
+// =============================================
+
+/**
+ * CONVERSIÓN DISTRIBUIDA - Enviar tarea a nodos
+ */
+router.post('/convert-distributed', async (req, res) => {
+    try {
+        const { fileId, targetFormat } = req.body;
+        const user = req.user;
+
+        console.log(`🔄 Solicitando conversión distribuida: ${fileId} -> ${targetFormat}`);
+
+        // Obtener información del archivo
+        const doc = await db.collection('mediaFiles').doc(fileId).get();
+        if (!doc.exists) {
+            return res.status(404).json({
+                success: false,
+                error: 'Archivo no encontrado'
+            });
+        }
+
+        const fileData = doc.data();
+
+        // Verificar permisos
+        const hasPermission = fileData.permissions.some(perm => 
+            perm.userId === user.id
+        );
+
+        if (!hasPermission) {
+            return res.status(403).json({
+                success: false,
+                error: 'No tienes permiso para convertir este archivo'
+            });
+        }
+
+        // Crear tarea de conversión
+        const task = {
+            id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: fileData.fileType, // 'audio' o 'video'
+            data: {
+                fileId: fileId,
+                originalName: fileData.originalName,
+                originalFormat: fileData.mimeType.split('/')[1],
+                targetFormat: targetFormat,
+                userId: user.id,
+                userEmail: user.email,
+                fileInfo: {
+                    size: fileData.size,
+                    currentStorage: fileData.storageInfo?.storageType,
+                    downloadUrl: fileData.storageInfo?.url
+                }
+            },
+            priority: 'normal',
+            retryCount: 0
+        };
+
+        // Distribuir tarea usando el load balancer
+        const assignment = LoadBalancer.distributeTask(task);
+
+        if (!assignment) {
+            // No hay nodos disponibles, encolar
+            return res.json({
+                success: true,
+                assigned: false,
+                message: 'Conversión encolada - esperando nodos disponibles',
+                taskId: task.id,
+                queuePosition: LoadBalancer.taskQueue.length
+            });
+        }
+
+        // Tarea asignada a un nodo
+        console.log(`📡 Tarea de conversión asignada: ${task.id} -> ${assignment.node.id}`);
+
+        // Actualizar estado en Firebase
+        await db.collection('mediaFiles').doc(fileId).update({
+            conversionStatus: 'processing',
+            conversionTaskId: task.id,
+            targetFormat: targetFormat,
+            lastConversionAttempt: new Date()
+        });
+
+        res.json({
+            success: true,
+            assigned: true,
+            message: 'Conversión distribuida a nodo disponible',
+            taskId: task.id,
+            node: {
+                id: assignment.node.id,
+                type: assignment.node.type,
+                address: assignment.node.address
+            },
+            estimatedTime: '30-60 segundos',
+            startedAt: new Date()
+        });
+
+    } catch (error) {
+        console.error('❌ Error en conversión distribuida:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error iniciando conversión distribuida',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * OBTENER ESTADO DEL SISTEMA DISTRIBUIDO
+ */
+router.get('/system-status', async (req, res) => {
+    try {
+        const systemStats = LoadBalancer.getSystemStats();
+        
+        res.json({
+            success: true,
+            system: {
+                ...systemStats,
+                timestamp: new Date(),
+                loadBalancer: 'active',
+                distributed: true
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error obteniendo estado del sistema:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error obteniendo estado del sistema'
+        });
+    }
+});
+
+// =============================================
 // RUTA DE SINCRONIZACIÓN (existente)
 // =============================================
 
@@ -341,8 +481,7 @@ router.post('/scan-storage', authenticateJWT, async (req, res) => {
   }
 });
 
-// =============================================
-// ⚠️ NO AGREGAR MÁS RUTAS AQUÍ - ELIMINAR LAS RUTAS DUPLICADAS
-// =============================================
+// ✅ ELIMINAR LA LÍNEA DUPLICADA - ESTA RUTA YA EXISTE ARRIBA
+// router.post('/convert-real', fileController.convertFileReal);
 
 module.exports = router;

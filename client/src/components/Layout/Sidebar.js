@@ -1,12 +1,13 @@
+// client/src/components/Layout/Sidebar.js - VERSIÓN SIN CONFIGURACIONES
 import React from 'react';
-import { Upload, Files, Monitor, Settings } from 'lucide-react';
+import { Upload, Files, Monitor } from 'lucide-react'; // ✅ Removido Settings
 
 const Sidebar = ({ activeView, setActiveView }) => {
   const menuItems = [
     { id: 'files', label: 'Mis Archivos', icon: Files },
     { id: 'upload', label: 'Subir Archivos', icon: Upload },
     { id: 'monitor', label: 'Monitor del Sistema', icon: Monitor },
-    { id: 'settings', label: 'Configuración', icon: Settings },
+    // ✅ ELIMINADO: Configuración
   ];
 
   return (
@@ -27,7 +28,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
                   onClick={() => setActiveView(item.id)}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
                     isActive
-                      ? 'bg-primary-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                   }`}
                 >
@@ -43,6 +44,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
       <div className="p-4 border-t border-gray-700">
         <div className="text-center text-sm text-gray-400">
           <p>MAGISOPERATIVOS v1.0</p>
+          <p className="mt-1 text-xs">Sistema Distribuido</p>
         </div>
       </div>
     </div>

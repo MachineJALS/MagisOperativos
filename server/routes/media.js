@@ -1,4 +1,4 @@
-// server/routes/media.js
+// server/routes/media.js - VERSIÓN CORREGIDA
 const express = require('express');
 const { authenticateJWT } = require('../middleware/auth');
 const mediaController = require('../controllers/mediaController');
@@ -14,7 +14,7 @@ router.post('/convert/:fileId', mediaController.convertFile);
 // Obtener formatos soportados
 router.get('/supported-formats', mediaController.getSupportedFormats);
 
-// ELIMINAR esta línea que causa el error:
+// ✅ ELIMINAR LA LÍNEA COMENTADA QUE CAUSABA EL ERROR
 // router.get('/info/:fileId', mediaController.getFileInfo);
 
 module.exports = router;
