@@ -294,70 +294,70 @@ Interpretación de Estados:
 
 🔴 Rojo: Nodo sobrecargado (>85% uso)
 
-MagisOperativos/
-├── 📂 client/                         # Frontend React
-│   ├── 📂 src/
-│   │   ├── 📂 components/             # Componentes React
-│   │   │   ├── 📂 Dashboard/          # Panel principal
+MagisOperativos
+├── 📂 client                         # Frontend React
+│   ├── 📂 src
+│   │   ├── 📂 components             # Componentes React
+│   │   │   ├── 📂 Dashboard          # Panel principal
 │   │   │   │   ├── FileList.js
 │   │   │   │   ├── FileUpload.js
 │   │   │   │   └── SystemMonitor.js
-│   │   │   ├── 📂 Media/              # Reproductores multimedia
+│   │   │   ├── 📂 Media              # Reproductores multimedia
 │   │   │   │   ├── AudioPlayer.js
 │   │   │   │   ├── VideoPlayer.js
 │   │   │   │   └── ConversionPanel.js
-│   │   │   ├── 📂 Auth/               # Autenticación
+│   │   │   ├── 📂 Auth               # Autenticación
 │   │   │   │   ├── Login.js
 │   │   │   │   └── TokenHandler.js
-│   │   │   └── 📂 Layout/             # Layout principal
+│   │   │   └── 📂 Layout             # Layout principal
 │   │   │       ├── Header.js
 │   │   │       ├── Sidebar.js
 │   │   │       └── MainLayout.js
-│   │   ├── 📂 services/               # Servicios API
+│   │   ├── 📂 services               # Servicios API
 │   │   │   └── api.js
-│   │   └── 📂 utils/                  # Utilidades
+│   │   └── 📂 utils                  # Utilidades
 │   │       └── authDebug.js
 │   ├── package.json
 │   └── tailwind.config.js
 │
-├── 📂 server/                         # Backend Node.js
-│   ├── 📂 controllers/                # Lógica de negocio
+├── 📂 server                         # Backend Node.js
+│   ├── 📂 controllers               # Lógica de negocio
 │   │   ├── fileController.js
 │   │   ├── mediaController.js
 │   │   └── nodeController.js
-│   ├── 📂 routes/                     # Endpoints API
+│   ├── 📂 routes                     # Endpoints API
 │   │   ├── files.js
 │   │   ├── media.js
 │   │   ├── nodes.js
 │   │   ├── auth.js
 │   │   └── upload.js
-│   ├── 📂 utils/                      # Utilidades
+│   ├── 📂 utils                      # Utilidades
 │   │   ├── loadBalancer.js            # Balanceador de carga
 │   │   ├── nodeComm.js                # Comunicación entre nodos
 │   │   ├── ffmpeg.js                  # Procesamiento multimedia
 │   │   └── storage.js                 # Gestión de almacenamiento
-│   ├── 📂 nodes/                      # Nodos distribuidos
+│   ├── 📂 nodes                      # Nodos distribuidos
 │   │   ├── conversionNode1.js         # Nodo 1 (puerto 3002)
 │   │   └── conversionNode2.js         # Nodo 2 (puerto 3003)
-│   ├── 📂 models/                     # Modelos de datos
+│   ├── 📂 models                    # Modelos de datos
 │   │   └── Node.js
-│   ├── 📂 config/                     # Configuraciones
+│   ├── 📂 config                     # Configuraciones
 │   │   ├── firebase.js
 │   │   └── passport.js
-│   ├── 📂 middleware/                 # Middlewares
+│   ├── 📂 middleware                 # Middlewares
 │   │   └── auth.js
 │   ├── server.js                      # Servidor principal
 │   ├── start-all.js                   # Ejecutor automático
 │   └── package.json
 │
-├── 📂 storage/                        # Almacenamiento local
-│   ├── 📂 audio/                      # Archivos de audio
-│   ├── 📂 video/                      # Archivos de video
-│   ├── 📂 converted/                  # Archivos convertidos
-│   ├── 📂 temp/                       # Temporales
-│   └── 📂 uploads/                    # Subidas temporales
+├── 📂 storage                        # Almacenamiento local
+│   ├── 📂 audio                      # Archivos de audio
+│   ├── 📂 video                      # Archivos de video
+│   ├── 📂 converted                  # Archivos convertidos
+│   ├── 📂 temp                       # Temporales
+│   └── 📂 uploads                    # Subidas temporales
 │
-├── 📂 documentation/                  # Documentación
+├── 📂 documentation                  # Documentación
 │   ├── DOCUMENTACION_TECNICA.md
 │   └── MANUAL_USUARIO.md
 │
