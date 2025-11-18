@@ -294,32 +294,76 @@ Interpretación de Estados:
 
 🔴 Rojo: Nodo sobrecargado (>85% uso)
 
-📁 Estructura del Proyecto
-text
 MagisOperativos/
-├── client/                 # Frontend React
-│   ├── src/
-│   │   ├── components/     # Componentes React
-│   │   │   ├── Dashboard/  # Panel principal
-│   │   │   ├── Media/      # Reproductores
-│   │   │   ├── Auth/       # Autenticación
-│   │   │   └── Layout/     # Layout principal
-│   │   ├── services/       # Servicios API
-│   │   └── utils/          # Utilidades
+├── 📂 client/                         # Frontend React
+│   ├── 📂 src/
+│   │   ├── 📂 components/             # Componentes React
+│   │   │   ├── 📂 Dashboard/          # Panel principal
+│   │   │   │   ├── FileList.js
+│   │   │   │   ├── FileUpload.js
+│   │   │   │   └── SystemMonitor.js
+│   │   │   ├── 📂 Media/              # Reproductores multimedia
+│   │   │   │   ├── AudioPlayer.js
+│   │   │   │   ├── VideoPlayer.js
+│   │   │   │   └── ConversionPanel.js
+│   │   │   ├── 📂 Auth/               # Autenticación
+│   │   │   │   ├── Login.js
+│   │   │   │   └── TokenHandler.js
+│   │   │   └── 📂 Layout/             # Layout principal
+│   │   │       ├── Header.js
+│   │   │       ├── Sidebar.js
+│   │   │       └── MainLayout.js
+│   │   ├── 📂 services/               # Servicios API
+│   │   │   └── api.js
+│   │   └── 📂 utils/                  # Utilidades
+│   │       └── authDebug.js
+│   ├── package.json
+│   └── tailwind.config.js
+│
+├── 📂 server/                         # Backend Node.js
+│   ├── 📂 controllers/                # Lógica de negocio
+│   │   ├── fileController.js
+│   │   ├── mediaController.js
+│   │   └── nodeController.js
+│   ├── 📂 routes/                     # Endpoints API
+│   │   ├── files.js
+│   │   ├── media.js
+│   │   ├── nodes.js
+│   │   ├── auth.js
+│   │   └── upload.js
+│   ├── 📂 utils/                      # Utilidades
+│   │   ├── loadBalancer.js            # Balanceador de carga
+│   │   ├── nodeComm.js                # Comunicación entre nodos
+│   │   ├── ffmpeg.js                  # Procesamiento multimedia
+│   │   └── storage.js                 # Gestión de almacenamiento
+│   ├── 📂 nodes/                      # Nodos distribuidos
+│   │   ├── conversionNode1.js         # Nodo 1 (puerto 3002)
+│   │   └── conversionNode2.js         # Nodo 2 (puerto 3003)
+│   ├── 📂 models/                     # Modelos de datos
+│   │   └── Node.js
+│   ├── 📂 config/                     # Configuraciones
+│   │   ├── firebase.js
+│   │   └── passport.js
+│   ├── 📂 middleware/                 # Middlewares
+│   │   └── auth.js
+│   ├── server.js                      # Servidor principal
+│   ├── start-all.js                   # Ejecutor automático
 │   └── package.json
-├── server/                 # Backend Node.js
-│   ├── controllers/        # Lógica de negocio
-│   ├── routes/            # Endpoints API
-│   ├── utils/             # Utilidades
-│   │   ├── loadBalancer.js # Balanceador de carga
-│   │   ├── nodeComm.js    # Comunicación entre nodos
-│   │   └── ffmpeg.js      # Procesamiento multimedia
-│   ├── nodes/             # Nodos distribuidos
-│   │   ├── conversionNode1.js
-│   │   └── conversionNode2.js
-│   ├── models/            # Modelos de datos
-│   └── package.json
-└── README.md
+│
+├── 📂 storage/                        # Almacenamiento local
+│   ├── 📂 audio/                      # Archivos de audio
+│   ├── 📂 video/                      # Archivos de video
+│   ├── 📂 converted/                  # Archivos convertidos
+│   ├── 📂 temp/                       # Temporales
+│   └── 📂 uploads/                    # Subidas temporales
+│
+├── 📂 documentation/                  # Documentación
+│   ├── DOCUMENTACION_TECNICA.md
+│   └── MANUAL_USUARIO.md
+│
+├── .env                               # Variables de entorno
+├── firebase-service-account.json      # Configuración Firebase
+└── README.md                          # Este archivo
 🛠️ Troubleshooting
 Problemas Comunes
 ❌ Error de Autenticación
