@@ -1,7 +1,11 @@
 🎵 MagisOperativos - Sistema Multimedia Distribuido
+
 https://img.shields.io/badge/version-1.0.0-blue.svg
+
 https://img.shields.io/badge/Node.js-18+-green.svg
+
 https://img.shields.io/badge/React-18+-61dafb.svg
+
 https://img.shields.io/badge/Architecture-Distributed-orange.svg
 
 📖 Descripción
